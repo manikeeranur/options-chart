@@ -58,19 +58,7 @@ const formatToIST = (timestamp: number): string => {
   });
 };
 
-// Helper function to format time with seconds for hover display
-const formatToISTWithSeconds = (timestamp: number): string => {
-  const date = new Date((timestamp + IST_OFFSET_SECONDS) * 1000);
-  return date.toLocaleTimeString("en-IN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-    timeZone: "Asia/Kolkata",
-  });
-};
-
-// NEW: Helper function to format date with time for hover display
+// Helper function to format date with time for hover display
 const formatDateWithTime = (timestamp: number): string => {
   const date = new Date((timestamp + IST_OFFSET_SECONDS) * 1000);
 
@@ -104,7 +92,7 @@ const formatDateWithTime = (timestamp: number): string => {
   return `${day}-${month}-${year} ${time}`;
 };
 
-// NEW: Helper function to format date only for x-axis
+// Helper function to format date only for x-axis
 const formatDateOnly = (timestamp: number): string => {
   const date = new Date((timestamp + IST_OFFSET_SECONDS) * 1000);
 
@@ -162,6 +150,8 @@ const MinuteChart = ({ data }: { data: any[] }) => {
   const [ltp, setLtp] = useState("");
   const [sl, setSl] = useState("");
   const [target, setTarget] = useState("");
+  const [selectedTime, setSelectedTime] = useState("");
+  const [quantity, setQuantity] = useState("65");
 
   const [ohlcValues, setOhlcValues] = useState<OHLCValues | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -172,6 +162,285 @@ const MinuteChart = ({ data }: { data: any[] }) => {
 
   // Store last candle data
   const [lastCandle, setLastCandle] = useState<OHLCValues | null>(null);
+
+  // Calculate profit/loss and margin
+  const calculateResults = useCallback(() => {
+    if (!ltp || !sl || !target || !quantity) return null;
+
+    const ltpNum = parseFloat(ltp);
+    const slNum = parseFloat(sl);
+    const targetNum = parseFloat(target);
+    const quantityNum = parseFloat(quantity);
+
+    if (
+      isNaN(ltpNum) ||
+      isNaN(slNum) ||
+      isNaN(targetNum) ||
+      isNaN(quantityNum)
+    ) {
+      return null;
+    }
+
+    // Calculate profit if target hits
+    const profitPerUnit = targetNum - ltpNum;
+    const totalProfit = profitPerUnit * quantityNum;
+    const profitPercentage = ((profitPerUnit / ltpNum) * 100).toFixed(2);
+
+    // Calculate loss if SL hits
+    const lossPerUnit = slNum - ltpNum;
+    const totalLoss = lossPerUnit * quantityNum;
+    const lossPercentage = ((lossPerUnit / ltpNum) * 100).toFixed(2);
+
+    // Calculate total margin (LTP × Quantity)
+    const totalMargin = ltpNum * quantityNum;
+
+    return {
+      profitPerUnit,
+      totalProfit,
+      profitPercentage,
+      lossPerUnit,
+      totalLoss,
+      lossPercentage,
+      totalMargin,
+      quantity: quantityNum,
+      ltp: ltpNum,
+    };
+  }, [ltp, sl, target, quantity]);
+
+  const results = calculateResults();
+
+  // Initialize or update chart
+  useEffect(() => {
+    if (!chartRef.current) return;
+
+    const formattedData = formatData();
+
+    if (formattedData.length === 0) {
+      console.warn("No valid data to display");
+      return;
+    }
+
+    // Create chart
+    const chart = LightweightCharts.createChart(chartRef.current, {
+      width: chartRef.current.clientWidth,
+      height: chartRef.current.clientHeight,
+      layout: {
+        background: {
+          topColor: "solid",
+          color: theme === "light" ? "#ffffff" : "#1a1a1a",
+        },
+        textColor: theme === "light" ? "#333" : "#d1d5db",
+      },
+      grid: {
+        vertLines: { color: theme === "light" ? "#eee" : "#374151" },
+        horzLines: { color: theme === "light" ? "#eee" : "#374151" },
+      },
+      crosshair: {
+        mode: LightweightCharts.CrosshairMode.Normal,
+        vertLine: {
+          width: 1,
+          color: theme === "light" ? "#9CA3AF" : "#6B7280",
+          style: LightweightCharts.LineStyle.LargeDashed,
+          labelBackgroundColor: theme === "light" ? "#000" : "#374151",
+        },
+        horzLine: {
+          width: 1,
+          color: theme === "light" ? "#9CA3AF" : "#6B7280",
+          style: LightweightCharts.LineStyle.LargeDashed,
+          labelBackgroundColor: theme === "light" ? "#000" : "#374151",
+        },
+      },
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+        borderColor: theme === "light" ? "#d1d5db" : "#4b5563",
+        rightOffset: 0,
+        barSpacing: 6,
+        minBarSpacing: 1,
+        fixLeftEdge: true,
+        fixRightEdge: true,
+        tickMarkFormatter: (time: number, tickMarkType: any) => {
+          const date = new Date((time + IST_OFFSET_SECONDS) * 1000);
+          const hours = date.getHours();
+          const minutes = date.getMinutes();
+
+          if ((hours === 0 && minutes === 0) || formattedData.length < 50) {
+            return formatDateOnly(time);
+          }
+          return formatToIST(time);
+        },
+      },
+      rightPriceScale: {
+        borderColor: theme === "light" ? "#d1d5db" : "#4b5563",
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.1,
+        },
+      },
+      localization: {
+        timeFormatter: (time: number) => {
+          return formatDateWithTime(time);
+        },
+        dateFormat: "dd-MMM-yyyy",
+      },
+    });
+
+    chartInstanceRef.current = chart;
+
+    // Add series based on chart type
+    let series: any;
+
+    if (chartType === "candlestick") {
+      series = chart.addCandlestickSeries({
+        upColor: theme === "light" ? "#16a34a" : "#22c55e",
+        downColor: theme === "light" ? "#dc2626" : "#ef4444",
+        borderUpColor: theme === "light" ? "#16a34a" : "#22c55e",
+        borderDownColor: theme === "light" ? "#dc2626" : "#ef4444",
+        wickUpColor: theme === "light" ? "#16a34a" : "#22c55e",
+        wickDownColor: theme === "light" ? "#dc2626" : "#ef4444",
+        priceLineVisible: false,
+      });
+
+      series.setData(
+        formattedData.map((d) => ({
+          time: d.time,
+          open: d.open,
+          high: d.high,
+          low: d.low,
+          close: d.close,
+        })),
+      );
+    } else if (chartType === "line" || chartType === "area") {
+      const seriesOptions: any = {
+        color: theme === "light" ? "#3b82f6" : "#60a5fa",
+        lineWidth: 1,
+        priceLineVisible: false,
+      };
+
+      if (chartType === "area") {
+        seriesOptions.lineType = LightweightCharts.LineType.WithSteps;
+        seriesOptions.topColor =
+          theme === "light"
+            ? "rgba(59, 130, 246, 0.4)"
+            : "rgba(96, 165, 250, 0.4)";
+        seriesOptions.bottomColor =
+          theme === "light" ? "rgba(59, 130, 246, 0)" : "rgba(96, 165, 250, 0)";
+        seriesOptions.lineWidth = 1;
+      }
+
+      series = chart.addLineSeries(seriesOptions);
+
+      series.setData(
+        formattedData.map((d) => ({
+          time: d.time,
+          value: d.close,
+        })),
+      );
+    }
+
+    candleSeriesRef.current = series;
+
+    // Add volume series if enabled
+    if (showVolume && formattedData[0]?.volume !== undefined) {
+      volumeSeriesRef.current = chart.addHistogramSeries({
+        priceFormat: { type: "volume" },
+        priceScaleId: "volume",
+      });
+
+      volumeSeriesRef.current.setData(
+        formattedData.map((d: any) => ({
+          time: d.time,
+          value: d.volume ?? 0,
+          color: d.close >= d.open ? "#16a34a" : "#dc2626",
+        })),
+      );
+
+      chart.priceScale("volume").applyOptions({
+        scaleMargins: {
+          top: 0.8,
+          bottom: 0,
+        },
+      });
+    } else if (volumeSeriesRef.current) {
+      chart.removeSeries(volumeSeriesRef.current);
+      volumeSeriesRef.current = null;
+    }
+
+    if (formattedData.length > 0) {
+      const firstTime: any = formattedData[0].time;
+      const lastTime: any = formattedData[formattedData.length - 1].time;
+
+      chart.timeScale().setVisibleRange({
+        from: firstTime,
+        to: lastTime,
+      });
+
+      setTimeout(() => {
+        chart.timeScale().fitContent();
+      }, 100);
+    }
+
+    // Handle crosshair for OHLC display
+    chart.subscribeCrosshairMove((param: any) => {
+      if (!param.time || param.seriesData.size === 0) {
+        setOhlcValues(null);
+        return;
+      }
+
+      const candleData = param.seriesData.get(series);
+      if (!candleData) {
+        setOhlcValues(null);
+        return;
+      }
+
+      let open = 0,
+        high = 0,
+        low = 0,
+        close = 0;
+
+      if (chartType === "candlestick") {
+        ({ open, high, low, close } = candleData);
+      } else {
+        const value = candleData.value;
+        open = high = low = close = value;
+      }
+
+      const timeStr = formatDateWithTime(param.time);
+
+      setOhlcValues({
+        open,
+        high,
+        low,
+        close,
+        time: timeStr,
+      });
+    });
+
+    // Draw existing lines if they exist
+    if (ltp || sl || target) {
+      drawAllLines();
+    }
+
+    // Handle resize
+    const resizeObserver = new ResizeObserver(() => {
+      if (chartRef.current) {
+        chart.applyOptions({
+          width: chartRef.current.clientWidth,
+          height: chartRef.current.clientHeight,
+        });
+        setTimeout(() => {
+          chart.timeScale().fitContent();
+        }, 50);
+      }
+    });
+
+    resizeObserver.observe(chartRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+      chart.remove();
+    };
+  }, [data, theme, chartType, showVolume]);
 
   // Format data for chart
   const formatData = useCallback(() => {
@@ -223,7 +492,7 @@ const MinuteChart = ({ data }: { data: any[] }) => {
             high,
             low,
             close,
-            time: dateStr, // Use full date-time string for last candle
+            time: dateStr,
           });
         }
       } catch (error) {
@@ -233,264 +502,6 @@ const MinuteChart = ({ data }: { data: any[] }) => {
 
     return formattedData;
   }, [data]);
-
-  // Initialize or update chart
-  useEffect(() => {
-    if (!chartRef.current) return;
-
-    const formattedData = formatData();
-
-    if (formattedData.length === 0) {
-      console.warn("No valid data to display");
-      return;
-    }
-
-    // Create chart
-    const chart = LightweightCharts.createChart(chartRef.current, {
-      width: chartRef.current.clientWidth,
-      height: chartRef.current.clientHeight,
-      layout: {
-        background: {
-          topColor: "solid",
-          color: theme === "light" ? "#ffffff" : "#1a1a1a",
-        },
-        textColor: theme === "light" ? "#333" : "#d1d5db",
-      },
-      grid: {
-        vertLines: { color: theme === "light" ? "#eee" : "#374151" },
-        horzLines: { color: theme === "light" ? "#eee" : "#374151" },
-      },
-      crosshair: {
-        mode: LightweightCharts.CrosshairMode.Normal,
-        vertLine: {
-          width: 1,
-          color: theme === "light" ? "#9CA3AF" : "#6B7280",
-          style: LightweightCharts.LineStyle.LargeDashed,
-          labelBackgroundColor: theme === "light" ? "#000" : "#374151",
-        },
-        horzLine: {
-          width: 1,
-          color: theme === "light" ? "#9CA3AF" : "#6B7280",
-          style: LightweightCharts.LineStyle.LargeDashed,
-          labelBackgroundColor: theme === "light" ? "#000" : "#374151",
-        },
-      },
-      timeScale: {
-        timeVisible: true,
-        secondsVisible: false,
-        borderColor: theme === "light" ? "#d1d5db" : "#4b5563",
-        // FIX: Set right offset to show only data, not empty intervals
-        rightOffset: 0,
-        barSpacing: 6, // Adjust spacing between bars
-        minBarSpacing: 1, // Minimum spacing
-        fixLeftEdge: true,
-        fixRightEdge: true,
-        // X-axis labels - show IST time without seconds
-        // tickMarkFormatter: (time: number) => {
-        //   return formatToIST(time);
-        // },
-        // NEW: Show date when zoomed out
-        tickMarkFormatter: (time: number, tickMarkType: any) => {
-          // When zoomed out (showing multiple days), show date
-          // When zoomed in (intraday), show time
-          const date = new Date((time + IST_OFFSET_SECONDS) * 1000);
-          const hours = date.getHours();
-          const minutes = date.getMinutes();
-
-          // If time is exactly at midnight (00:00) or we have very few bars, show date
-          if ((hours === 0 && minutes === 0) || formattedData.length < 50) {
-            return formatDateOnly(time);
-          }
-          return formatToIST(time);
-        },
-      },
-      rightPriceScale: {
-        borderColor: theme === "light" ? "#d1d5db" : "#4b5563",
-        scaleMargins: {
-          top: 0.1,
-          bottom: 0.1,
-        },
-      },
-      // Localization for tooltips
-      localization: {
-        // NEW: Show full date-time in hover tooltip
-        timeFormatter: (time: number) => {
-          return formatDateWithTime(time);
-        },
-        dateFormat: "dd-MMM-yyyy", // Date format
-      },
-    });
-
-    chartInstanceRef.current = chart;
-
-    // Add series based on chart type
-    let series: any;
-
-    if (chartType === "candlestick") {
-      series = chart.addCandlestickSeries({
-        upColor: theme === "light" ? "#16a34a" : "#22c55e",
-        downColor: theme === "light" ? "#dc2626" : "#ef4444",
-        borderUpColor: theme === "light" ? "#16a34a" : "#22c55e",
-        borderDownColor: theme === "light" ? "#dc2626" : "#ef4444",
-        wickUpColor: theme === "light" ? "#16a34a" : "#22c55e",
-        wickDownColor: theme === "light" ? "#dc2626" : "#ef4444",
-        priceLineVisible: false,
-      });
-
-      // Set candlestick data
-      series.setData(
-        formattedData.map((d) => ({
-          time: d.time,
-          open: d.open,
-          high: d.high,
-          low: d.low,
-          close: d.close,
-        })),
-      );
-    } else if (chartType === "line" || chartType === "area") {
-      // Create line or area series
-      const seriesOptions: any = {
-        color: theme === "light" ? "#3b82f6" : "#60a5fa",
-        lineWidth: 1,
-        priceLineVisible: false,
-      };
-
-      if (chartType === "area") {
-        seriesOptions.lineType = LightweightCharts.LineType.WithSteps;
-        seriesOptions.topColor =
-          theme === "light"
-            ? "rgba(59, 130, 246, 0.4)"
-            : "rgba(96, 165, 250, 0.4)";
-        seriesOptions.bottomColor =
-          theme === "light" ? "rgba(59, 130, 246, 0)" : "rgba(96, 165, 250, 0)";
-        seriesOptions.lineWidth = 1;
-      }
-
-      series = chart.addLineSeries(seriesOptions);
-
-      // Set line data (use close prices)
-      series.setData(
-        formattedData.map((d) => ({
-          time: d.time,
-          value: d.close,
-        })),
-      );
-    }
-
-    candleSeriesRef.current = series;
-
-    // Add volume series if enabled
-    if (showVolume && formattedData[0]?.volume !== undefined) {
-      volumeSeriesRef.current = chart.addHistogramSeries({
-        priceFormat: { type: "volume" },
-        priceScaleId: "volume",
-      });
-
-      volumeSeriesRef.current.setData(
-        formattedData.map((d: any) => ({
-          time: d.time,
-          value: d.volume ?? 0,
-          color: d.close >= d.open ? "#16a34a" : "#dc2626",
-        })),
-      );
-
-      chart.priceScale("volume").applyOptions({
-        scaleMargins: {
-          top: 0.8,
-          bottom: 0,
-        },
-      });
-    } else if (volumeSeriesRef.current) {
-      chart.removeSeries(volumeSeriesRef.current);
-      volumeSeriesRef.current = null;
-    }
-
-    if (formattedData.length > 0) {
-      const firstTime: any = formattedData[0].time;
-      const lastTime: any = formattedData[formattedData.length - 1].time;
-
-      console.log("Chart data range:", {
-        firstCandle: formatDateWithTime(firstTime),
-        lastCandle: formatDateWithTime(lastTime),
-        totalCandles: formattedData.length,
-      });
-
-      // Set visible range to show all data without empty spaces
-      chart.timeScale().setVisibleRange({
-        from: firstTime,
-        to: lastTime,
-      });
-
-      // Fit content to remove empty spaces
-      setTimeout(() => {
-        chart.timeScale().fitContent();
-      }, 100);
-    }
-
-    // Handle crosshair for OHLC display
-    chart.subscribeCrosshairMove((param: any) => {
-      if (!param.time || param.seriesData.size === 0) {
-        setOhlcValues(null);
-        return;
-      }
-
-      const candleData = param.seriesData.get(series);
-      if (!candleData) {
-        setOhlcValues(null);
-        return;
-      }
-
-      let open = 0,
-        high = 0,
-        low = 0,
-        close = 0;
-
-      if (chartType === "candlestick") {
-        ({ open, high, low, close } = candleData);
-      } else {
-        // For line/area charts, use the value for all OHLC
-        const value = candleData.value;
-        open = high = low = close = value;
-      }
-
-      // Use the new date-time format for hover
-      const timeStr = formatDateWithTime(param.time);
-
-      setOhlcValues({
-        open,
-        high,
-        low,
-        close,
-        time: timeStr,
-      });
-    });
-
-    // Draw existing lines if they exist
-    if (ltp || sl || target) {
-      drawAllLines();
-    }
-
-    // Handle resize
-    const resizeObserver = new ResizeObserver(() => {
-      if (chartRef.current) {
-        chart.applyOptions({
-          width: chartRef.current.clientWidth,
-          height: chartRef.current.clientHeight,
-        });
-        // Fit content again on resize
-        setTimeout(() => {
-          chart.timeScale().fitContent();
-        }, 50);
-      }
-    });
-
-    resizeObserver.observe(chartRef.current);
-
-    return () => {
-      resizeObserver.disconnect();
-      chart.remove();
-    };
-  }, [data, theme, formatData, chartType, showVolume]);
 
   // Draw all lines function
   const drawAllLines = () => {
@@ -506,38 +517,41 @@ const MinuteChart = ({ data }: { data: any[] }) => {
 
     // Draw LTP line
     if (ltp && !isNaN(Number(ltp))) {
+      const labelText = selectedTime ? `LTP @ ${selectedTime}` : "LTP";
       ltpLineRef.current = candleSeriesRef.current.createPriceLine({
         price: Number(ltp),
-        color: "#00BFFF", // Sky blue color
+        color: "#00BFFF",
         lineWidth: 1,
         lineStyle: LightweightCharts.LineStyle.Solid,
         axisLabelVisible: true,
-        title: "LTP",
+        title: labelText,
         axisLabelColor: "#00BFFF",
       });
     }
 
     // Draw SL line
     if (sl && !isNaN(Number(sl))) {
+      const labelText = selectedTime ? `SL @ ${selectedTime}` : "SL";
       slLineRef.current = candleSeriesRef.current.createPriceLine({
         price: Number(sl),
         color: theme === "light" ? "#dc2626" : "#ef4444",
         lineWidth: 1,
         lineStyle: LightweightCharts.LineStyle.Solid,
         axisLabelVisible: true,
-        title: "SL",
+        title: labelText,
       });
     }
 
     // Draw Target line
     if (target && !isNaN(Number(target))) {
+      const labelText = selectedTime ? `Target @ ${selectedTime}` : "Target";
       targetLineRef.current = candleSeriesRef.current.createPriceLine({
         price: Number(target),
         color: theme === "light" ? "#16a34a" : "#22c55e",
         lineWidth: 1,
         lineStyle: LightweightCharts.LineStyle.Solid,
         axisLabelVisible: true,
-        title: "Target",
+        title: labelText,
       });
     }
   };
@@ -552,6 +566,8 @@ const MinuteChart = ({ data }: { data: any[] }) => {
     setLtp("");
     setSl("");
     setTarget("");
+    setSelectedTime("");
+    setQuantity("65");
 
     if (!candleSeriesRef.current) return;
 
@@ -574,7 +590,7 @@ const MinuteChart = ({ data }: { data: any[] }) => {
     setChartType(type);
   };
 
-  // Handle Enter key press in input fields
+  // Handle Enter key press
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       handleDrawLines();
@@ -592,63 +608,188 @@ const MinuteChart = ({ data }: { data: any[] }) => {
   return (
     <div className="relative w-full">
       {/* Controls */}
-      <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-900 shadow z-20">
-        {/* Left side: LTP/SL/Target inputs */}
-        <div className="flex gap-3 items-center">
-          {/* LTP Input */}
-          <div className="relative">
-            <input
-              type="number"
-              placeholder="LTP"
-              value={ltp}
-              onChange={(e) => setLtp(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="border dark:border-gray-600 dark:bg-gray-800 dark:text-white px-3 py-1 rounded w-28 focus:ring-2 focus:ring-blue-300"
-            />
-            <div className="absolute top-1/2 right-2 transform -translate-y-1/2 w-3 h-3 rounded-full bg-[#00BFFF]"></div>
+      <div className="flex justify-between items-start p-3 bg-white dark:bg-gray-900 shadow z-20">
+        {/* Left side: Inputs */}
+        <div className="flex flex-col gap-3">
+          {/* Inputs row */}
+          <div className="flex gap-3 items-center">
+            {/* Time Input */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 dark:text-gray-400">
+                Time
+              </label>
+              <input
+                type="time"
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="border dark:border-gray-600 dark:bg-gray-800 dark:text-white px-3 py-1 rounded w-24 focus:ring-2 focus:ring-blue-300"
+              />
+            </div>
+
+            {/* LTP Input */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 dark:text-gray-400">
+                LTP
+              </label>
+              <input
+                type="number"
+                placeholder="Price"
+                value={ltp}
+                onChange={(e) => setLtp(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="border dark:border-gray-600 dark:bg-gray-800 dark:text-white px-3 py-1 rounded w-24 focus:ring-2 focus:ring-blue-300"
+              />
+            </div>
+
+            {/* SL Input */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 dark:text-gray-400">
+                SL
+              </label>
+              <input
+                type="number"
+                placeholder="Price"
+                value={sl}
+                onChange={(e) => setSl(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="border dark:border-gray-600 dark:bg-gray-800 dark:text-white px-3 py-1 rounded w-24 focus:ring-2 focus:ring-red-300"
+              />
+            </div>
+
+            {/* Target Input */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 dark:text-gray-400">
+                Target
+              </label>
+              <input
+                type="number"
+                placeholder="Price"
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="border dark:border-gray-600 dark:bg-gray-800 dark:text-white px-3 py-1 rounded w-24 focus:ring-2 focus:ring-green-300"
+              />
+            </div>
+
+            {/* Quantity Input */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 dark:text-gray-400">
+                Qty
+              </label>
+              <input
+                type="number"
+                placeholder="Quantity"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="border dark:border-gray-600 dark:bg-gray-800 dark:text-white px-3 py-1 rounded w-24 focus:ring-2 focus:ring-yellow-300"
+              />
+            </div>
+
+            {/* Buttons */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 dark:text-gray-400 invisible">
+                Actions
+              </label>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDrawLines}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+                >
+                  Draw Lines
+                </button>
+                <button
+                  onClick={handleClearLines}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* SL Input */}
-          <div className="relative">
-            <input
-              type="number"
-              placeholder="Stop Loss"
-              value={sl}
-              onChange={(e) => setSl(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="border dark:border-gray-600 dark:bg-gray-800 dark:text-white px-3 py-1 rounded w-28 focus:ring-2 focus:ring-red-300"
-            />
-            <div className="absolute top-1/2 right-2 transform -translate-y-1/2 w-3 h-3 rounded-full bg-red-500"></div>
-          </div>
+          {/* Profit/Loss Cards */}
+          {results && (
+            <div className="grid grid-cols-3 gap-4">
+              {/* Loss Card (If SL hits) */}
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                  <h3 className="font-bold text-red-700 dark:text-red-300 text-sm">
+                    If SL Hits
+                  </h3>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                    -₹
+                    {Math.abs(results.totalLoss).toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-gray-300">
+                    Per unit: ₹{results.lossPerUnit.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-gray-300">
+                    {results.lossPercentage}% loss
+                  </div>
+                </div>
+              </div>
 
-          {/* Target Input */}
-          <div className="relative">
-            <input
-              type="number"
-              placeholder="Target"
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="border dark:border-gray-600 dark:bg-gray-800 dark:text-white px-3 py-1 rounded w-28 focus:ring-2 focus:ring-green-300"
-            />
-            <div className="absolute top-1/2 right-2 transform -translate-y-1/2 w-3 h-3 rounded-full bg-green-500"></div>
-          </div>
+              {/* Margin Card - FIXED: Now shows LTP × Quantity */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                  <h3 className="font-bold text-blue-700 dark:text-blue-300 text-sm">
+                    Margin Required
+                  </h3>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    ₹
+                    {results.totalMargin.toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-gray-300">
+                    LTP: ₹{results.ltp.toFixed(2)} × Qty:{" "}
+                    {results.quantity.toLocaleString("en-IN")}
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-gray-300">
+                    {results.ltp.toFixed(2)} × {results.quantity} ={" "}
+                    {results.totalMargin.toFixed(2)}
+                  </div>
+                </div>
+              </div>
 
-          {/* Buttons */}
-          <div className="flex gap-2">
-            <button
-              onClick={handleDrawLines}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded whitespace-nowrap"
-            >
-              Apply Lines
-            </button>
-            <button
-              onClick={handleClearLines}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-1 rounded whitespace-nowrap"
-            >
-              Clear All
-            </button>
-          </div>
+              {/* Profit Card (If Target hits) */}
+              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <h3 className="font-bold text-green-700 dark:text-green-300 text-sm">
+                    If Target Hits
+                  </h3>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    +₹
+                    {results.totalProfit.toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-gray-300">
+                    Per unit: ₹{results.profitPerUnit.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-gray-300">
+                    {results.profitPercentage}% profit
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right side: Chart controls */}
@@ -715,7 +856,7 @@ const MinuteChart = ({ data }: { data: any[] }) => {
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-0.5 bg-red-500"></div>
-          <span className="dark:text-white">Stop Loss (Red)</span>
+          <span className="dark:text-white">SL (Red)</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-0.5 bg-green-500"></div>
