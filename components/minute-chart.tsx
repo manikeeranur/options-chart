@@ -660,7 +660,7 @@ const MinuteChart = ({ data }: { data: any[] }) => {
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                   {label}
                 </div>
-                <div className="font-bold dark:text-white">
+                <div className="font-bold tw-text-[10px] dark:text-white">
                   {displayData ? (
                     <>
                       {displayData?.[
@@ -677,8 +677,8 @@ const MinuteChart = ({ data }: { data: any[] }) => {
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 Date & Time
               </div>
-              <div className="font-bold dark:text-white text-[11px]">
-                {displayTime || "No data"}
+              <div className="font-bold dark:text-white uppercase">
+                {displayTime?.split("-")?.join("  ") || "No data"}
               </div>
             </div>
           </div>
