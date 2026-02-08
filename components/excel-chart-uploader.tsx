@@ -291,7 +291,7 @@ const ExcelChartUploader = () => {
 
         // Get headers first
         const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
-        const headers = [];
+        const headers: any = [];
         for (let C = range.s.c; C <= range.e.c; ++C) {
           const cell = sheet[XLSX.utils.encode_cell({ r: range.s.r, c: C })];
           headers[C] = cell ? cell.v : `Column${C + 1}`;
