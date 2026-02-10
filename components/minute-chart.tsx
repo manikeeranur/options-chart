@@ -2,6 +2,11 @@
 
 // import React, { useEffect, useRef, useState, useCallback } from "react";
 // import * as LightweightCharts from "lightweight-charts";
+// import {
+//   IconCoinRupeeFilled,
+//   IconTargetArrow,
+//   IconTargetOff,
+// } from "@tabler/icons-react";
 
 // const IST_OFFSET_SECONDS = 5.5 * 60 * 60;
 
@@ -118,46 +123,6 @@
 //   return `${day}-${month}-${year}`;
 // };
 
-// // Convert time string (HH:mm) to seconds since midnight
-// const timeToSeconds = (timeStr: string): number => {
-//   if (!timeStr) return 0;
-//   const [hours, minutes] = timeStr.split(":").map(Number);
-//   return hours * 3600 + minutes * 60;
-// };
-
-// // Parse selected time to timestamp - FIXED VERSION
-// const parseSelectedTime = (timeStr: string): number => {
-//   if (!timeStr) return 0;
-
-//   try {
-//     // Get today's date from the first candle in data
-//     // We need to use the same date as the chart data
-//     console.log("Parsing selected time:", timeStr);
-
-//     // Split time
-//     const [hours, minutes] = timeStr.split(":").map(Number);
-
-//     // We'll use a reference date from the first candle
-//     // This will be updated when we have actual data
-//     const referenceDate = new Date();
-//     const year = referenceDate.getFullYear();
-//     const month = referenceDate.getMonth();
-//     const day = referenceDate.getDate();
-
-//     // Create date with reference date + selected time
-//     const date = new Date(year, month, day, hours, minutes, 0);
-
-//     // Convert to timestamp and adjust for IST
-//     const timestamp = Math.floor(date.getTime() / 1000) - IST_OFFSET_SECONDS;
-//     console.log("Parsed timestamp:", timestamp, "for time:", timeStr);
-
-//     return timestamp;
-//   } catch (error) {
-//     console.error("Error parsing selected time:", error);
-//     return 0;
-//   }
-// };
-
 // interface CandleData {
 //   time: number;
 //   open: number;
@@ -189,6 +154,34 @@
 //   };
 // }
 
+// // Calculate duration between two times in HH:mm format
+// const calculateDuration = (entryTime: string, exitTime: string): string => {
+//   if (!entryTime || !exitTime) return "";
+
+//   try {
+//     const [entryHour, entryMinute] = entryTime.split(":").map(Number);
+//     const [exitHour, exitMinute] = exitTime.split(":").map(Number);
+
+//     let totalMinutes =
+//       exitHour * 60 + exitMinute - (entryHour * 60 + entryMinute);
+
+//     if (totalMinutes < 0) {
+//       totalMinutes += 24 * 60; // Handle cross-day scenario
+//     }
+
+//     const hours = Math.floor(totalMinutes / 60);
+//     const minutes = totalMinutes % 60;
+
+//     if (hours > 0) {
+//       return `${hours}h ${minutes}m`;
+//     }
+//     return `${minutes}m`;
+//   } catch (error) {
+//     console.error("Error calculating duration:", error);
+//     return "";
+//   }
+// };
+
 // const MinuteChart = ({ data }: { data: any[] }) => {
 //   const chartRef = useRef<HTMLDivElement>(null);
 //   const chartInstanceRef = useRef<any>(null);
@@ -204,7 +197,7 @@
 //   const [ltp, setLtp] = useState("");
 //   const [sl, setSl] = useState("");
 //   const [target, setTarget] = useState("");
-//   const [selectedTime, setSelectedTime] = useState("");
+//   const [selectedTime, setSelectedTime] = useState("09:21");
 //   const [quantity, setQuantity] = useState("65");
 
 //   const [ohlcValues, setOhlcValues] = useState<OHLCValues | null>(null);
@@ -225,6 +218,10 @@
 //   );
 //   const [entryTimestamp, setEntryTimestamp] = useState<number>(0);
 //   const [entryDateStr, setEntryDateStr] = useState<string>("");
+
+//   // New state for option chain style label
+//   const [optionLabel, setOptionLabel] = useState("NIFTY 50");
+//   const [isEditingLabel, setIsEditingLabel] = useState(false);
 
 //   // Format data for chart
 //   const formatData = useCallback(() => {
@@ -284,13 +281,6 @@
 //       }
 //     }
 
-//     console.log("Formatted data:", formattedData.length, "candles");
-//     console.log("First candle:", formatDateWithTime(formattedData[0]?.time));
-//     console.log(
-//       "Last candle:",
-//       formatDateWithTime(formattedData[formattedData.length - 1]?.time),
-//     );
-
 //     setFormattedChartData(formattedData);
 //     return formattedData;
 //   }, [data]);
@@ -343,15 +333,12 @@
 
 //   const results = calculateResults();
 
-//   // IMPROVED: Parse selected time with correct date from data
+//   // Parse selected time with correct date from data
 //   const parseEntryTime = useCallback(
 //     (timeStr: string) => {
 //       if (!timeStr || !formattedChartData.length) return 0;
 
 //       try {
-//         console.log("=== Parsing Entry Time ===");
-//         console.log("Selected time string:", timeStr);
-
 //         // Get the date from the first candle to use as reference
 //         const firstCandleTime = formattedChartData[0].time;
 //         const firstCandleDate = new Date(
@@ -375,16 +362,6 @@
 //         const formattedEntryTime = formatDateWithTime(timestamp);
 //         setEntryDateStr(formattedEntryTime);
 
-//         console.log("Using date from first candle:", {
-//           year,
-//           month: month + 1,
-//           day,
-//         });
-//         console.log("Entry time:", timeStr);
-//         console.log("Calculated timestamp:", timestamp);
-//         console.log("Formatted entry time:", formattedEntryTime);
-//         console.log("First candle time:", formatDateWithTime(firstCandleTime));
-
 //         return timestamp;
 //       } catch (error) {
 //         console.error("Error parsing entry time:", error);
@@ -396,14 +373,7 @@
 
 //   // Check which level gets hit first AFTER entry time
 //   const checkFirstHit = useCallback(() => {
-//     console.log("=== Checking first hit ===");
-//     console.log("Selected time:", selectedTime);
-//     console.log("Entry timestamp:", entryTimestamp);
-//     console.log("Entry date string:", entryDateStr);
-//     console.log("Formatted data length:", formattedChartData.length);
-
 //     if (!formattedChartData.length || !results) {
-//       console.log("No data or results, skipping hit check");
 //       setFirstHit(null);
 //       return;
 //     }
@@ -413,72 +383,36 @@
 //     const slNum = results.sl;
 //     const targetNum = results.target;
 
-//     console.log("Entry Price (LTP):", ltpNum);
-//     console.log("SL:", slNum);
-//     console.log("Target:", targetNum);
-
 //     // Determine if we're long or short based on LTP relative to Target
-//     const isLong = ltpNum < targetNum; // Buying low, expecting to sell high
-
-//     console.log("Position type:", isLong ? "LONG" : "SHORT");
+//     const isLong = ltpNum < targetNum;
 
 //     // Find the starting index based on entry time
 //     let startIndex = 0;
-//     let candlesChecked = 0;
 
 //     if (entryTimestamp > 0) {
-//       // Find the first candle STRICTLY AFTER the entry time
 //       for (let i = 0; i < formattedChartData.length; i++) {
 //         const candleTime = formattedChartData[i].time;
-//         const candleTimeStr = formatDateWithTime(candleTime);
-
 //         if (candleTime > entryTimestamp) {
 //           startIndex = i;
-//           console.log(`Starting from candle ${i} (strictly after entry)`);
-//           console.log(`Candle time: ${candleTimeStr}`);
-//           console.log(`Entry time: ${entryDateStr}`);
 //           break;
 //         } else if (candleTime === entryTimestamp) {
-//           // If exact match, start from next candle
 //           startIndex = i + 1;
-//           console.log(`Starting from candle ${i + 1} (next after exact match)`);
-//           console.log(`Candle time matches entry: ${candleTimeStr}`);
 //           break;
 //         }
 //       }
 
-//       // If no candle after entry time, show message
 //       if (startIndex >= formattedChartData.length) {
-//         console.log("No candles found after entry time");
 //         setFirstHit(null);
 //         return;
 //       }
-//     } else {
-//       console.log("No entry time specified, checking all candles");
 //     }
-
-//     candlesChecked = formattedChartData.length - startIndex;
-//     console.log(`Checking ${candlesChecked} candles after entry...`);
 
 //     for (let i = startIndex; i < formattedChartData.length; i++) {
 //       const candle = formattedChartData[i];
 //       const candleTimeStr = formatDateWithTime(candle.time);
 
-//       console.log(
-//         `Checking candle ${i}: ${candleTimeStr}, Range: ${candle.low} - ${candle.high}`,
-//       );
-
-//       // For long position:
-//       // - SL is below LTP (stop loss)
-//       // - Target is above LTP (take profit)
 //       if (isLong) {
-//         // Check if SL is hit (price goes below SL)
 //         if (candle.low <= slNum) {
-//           console.log(`Candle ${i}: SL HIT!`);
-//           console.log(`  Time: ${candleTimeStr}`);
-//           console.log(`  Candle Low: ${candle.low} <= SL: ${slNum}`);
-//           console.log(`  Candle Range: ${candle.low} - ${candle.high}`);
-
 //           hitResult = {
 //             level: "SL",
 //             time: candleTimeStr,
@@ -494,13 +428,7 @@
 //           };
 //           break;
 //         }
-//         // Check if Target is hit (price goes above Target)
 //         if (candle.high >= targetNum) {
-//           console.log(`Candle ${i}: TARGET HIT!`);
-//           console.log(`  Time: ${candleTimeStr}`);
-//           console.log(`  Candle High: ${candle.high} >= Target: ${targetNum}`);
-//           console.log(`  Candle Range: ${candle.low} - ${candle.high}`);
-
 //           hitResult = {
 //             level: "Target",
 //             time: candleTimeStr,
@@ -516,18 +444,8 @@
 //           };
 //           break;
 //         }
-//       }
-//       // For short position:
-//       // - SL is above LTP (stop loss)
-//       // - Target is below LTP (take profit)
-//       else {
-//         // Check if SL is hit (price goes above SL)
+//       } else {
 //         if (candle.high >= slNum) {
-//           console.log(`Candle ${i}: SL HIT!`);
-//           console.log(`  Time: ${candleTimeStr}`);
-//           console.log(`  Candle High: ${candle.high} >= SL: ${slNum}`);
-//           console.log(`  Candle Range: ${candle.low} - ${candle.high}`);
-
 //           hitResult = {
 //             level: "SL",
 //             time: candleTimeStr,
@@ -543,13 +461,7 @@
 //           };
 //           break;
 //         }
-//         // Check if Target is hit (price goes below Target)
 //         if (candle.low <= targetNum) {
-//           console.log(`Candle ${i}: TARGET HIT!`);
-//           console.log(`  Time: ${candleTimeStr}`);
-//           console.log(`  Candle Low: ${candle.low} <= Target: ${targetNum}`);
-//           console.log(`  Candle Range: ${candle.low} - ${candle.high}`);
-
 //           hitResult = {
 //             level: "Target",
 //             time: candleTimeStr,
@@ -568,7 +480,6 @@
 //       }
 //     }
 
-//     console.log("=== Hit result ===", hitResult);
 //     setFirstHit(hitResult);
 //   }, [formattedChartData, results, entryTimestamp, entryDateStr, selectedTime]);
 
@@ -582,12 +493,6 @@
 //     if (selectedTime && formattedChartData.length > 0) {
 //       const timestamp = parseEntryTime(selectedTime);
 //       setEntryTimestamp(timestamp);
-//       console.log(
-//         "Updated entry timestamp:",
-//         timestamp,
-//         "for time:",
-//         selectedTime,
-//       );
 //     } else {
 //       setEntryTimestamp(0);
 //       setEntryDateStr("");
@@ -597,8 +502,6 @@
 //   // Check for hits when entry is set or results change
 //   useEffect(() => {
 //     if (results && isEntrySet && formattedChartData.length > 0) {
-//       console.log("Entry set, checking for hits...");
-//       // Small delay to ensure everything is ready
 //       setTimeout(() => {
 //         checkFirstHit();
 //       }, 200);
@@ -608,11 +511,6 @@
 //   // Draw all lines function
 //   const drawAllLines = () => {
 //     if (!candleSeriesRef.current) return;
-
-//     console.log("=== Drawing lines ===");
-//     console.log("LTP:", ltp, "SL:", sl, "Target:", target);
-//     console.log("Selected Time:", selectedTime);
-//     console.log("Entry Timestamp:", entryTimestamp);
 
 //     // Remove old lines
 //     if (ltpLineRef.current)
@@ -665,9 +563,7 @@
 //     // Mark entry as set and check for first hit
 //     if (ltp && sl && target) {
 //       setIsEntrySet(true);
-//       console.log("Entry set to true");
 
-//       // Small delay to ensure chart is updated
 //       setTimeout(() => {
 //         if (formattedChartData.length > 0) {
 //           checkFirstHit();
@@ -847,18 +743,72 @@
 //       }, 100);
 //     }
 
-//     // Handle crosshair for OHLC display
+//     // Create permanent OHLC display overlay
+//     const overlay = document.createElement("div");
+//     overlay.style.position = "absolute";
+//     overlay.style.top = "10px";
+//     overlay.style.left = "10px";
+//     overlay.style.zIndex = "1000";
+//     overlay.style.pointerEvents = "none";
+//     overlay.style.backgroundColor =
+//       theme === "light" ? "rgba(255, 255, 255, 0.9)" : "rgba(26, 26, 26, 0.9)";
+//     overlay.style.border = `1px solid ${theme === "light" ? "#d1d5db" : "#4b5563"}`;
+//     overlay.style.borderRadius = "4px";
+//     overlay.style.padding = "4px 8px";
+//     overlay.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
+
+//     const chartContainer = chartRef.current;
+//     chartContainer.style.position = "relative";
+//     chartContainer.appendChild(overlay);
+
+//     // Get last candle data for default display
+//     const lastCandle = formattedData[formattedData.length - 1];
+//     if (lastCandle) {
+//       const lastTimeStr = formatDateWithTime(lastCandle.time);
+//       const timePart =
+//         lastTimeStr.split(" ")[1] + " " + lastTimeStr.split(" ")[2];
+
+//       overlay.innerHTML = `
+//         <div style="font-family: monospace; font-size: 11px; color: ${theme === "light" ? "#333" : "#d1d5db"}">
+//           <span style="font-weight: bold; color: ${theme === "light" ? "#000" : "#fff"}">${optionLabel}</span>
+//           <span style="margin: 0 4px; color: ${theme === "light" ? "#666" : "#9ca3af"}">|</span>
+//           <span style="color: ${theme === "light" ? "#666" : "#9ca3af"}">${timePart}</span>
+//           <span style="margin: 0 4px; color: ${theme === "light" ? "#666" : "#9ca3af"}">|</span>
+//           <span>O:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${lastCandle.open.toFixed(2)}</span></span>
+//           <span style="margin-left: 8px">H:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${lastCandle.high.toFixed(2)}</span></span>
+//           <span style="margin-left: 8px">L:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${lastCandle.low.toFixed(2)}</span></span>
+//           <span style="margin-left: 8px">C:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${lastCandle.close.toFixed(2)}</span></span>
+//         </div>
+//       `;
+//     }
+
+//     // Update OHLC display on hover
 //     chart.subscribeCrosshairMove((param: any) => {
 //       if (!param.time || param.seriesData.size === 0) {
-//         setOhlcValues(null);
+//         // Show last candle data when not hovering
+//         if (lastCandle) {
+//           const lastTimeStr = formatDateWithTime(lastCandle.time);
+//           const timePart =
+//             lastTimeStr.split(" ")[1] + " " + lastTimeStr.split(" ")[2];
+
+//           overlay.innerHTML = `
+//             <div style="font-family: monospace; font-size: 11px; color: ${theme === "light" ? "#333" : "#d1d5db"}">
+//               <span style="font-weight: bold; color: ${theme === "light" ? "#000" : "#fff"}">${optionLabel}</span>
+//               <span style="margin: 0 4px; color: ${theme === "light" ? "#666" : "#9ca3af"}">|</span>
+//               <span style="color: ${theme === "light" ? "#666" : "#9ca3af"}">${timePart}</span>
+//               <span style="margin: 0 4px; color: ${theme === "light" ? "#666" : "#9ca3af"}">|</span>
+//               <span>O:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${lastCandle.open.toFixed(2)}</span></span>
+//               <span style="margin-left: 8px">H:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${lastCandle.high.toFixed(2)}</span></span>
+//               <span style="margin-left: 8px">L:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${lastCandle.low.toFixed(2)}</span></span>
+//               <span style="margin-left: 8px">C:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${lastCandle.close.toFixed(2)}</span></span>
+//             </div>
+//           `;
+//         }
 //         return;
 //       }
 
 //       const candleData = param.seriesData.get(series);
-//       if (!candleData) {
-//         setOhlcValues(null);
-//         return;
-//       }
+//       if (!candleData) return;
 
 //       let open = 0,
 //         high = 0,
@@ -873,14 +823,21 @@
 //       }
 
 //       const timeStr = formatDateWithTime(param.time);
+//       const timePart = timeStr.split(" ")[1] + " " + timeStr.split(" ")[2];
 
-//       setOhlcValues({
-//         open,
-//         high,
-//         low,
-//         close,
-//         time: timeStr,
-//       });
+//       // Update overlay with hover data
+//       overlay.innerHTML = `
+//         <div style="font-family: monospace; font-size: 11px; color: ${theme === "light" ? "#333" : "#d1d5db"}">
+//           <span style="font-weight: bold; color: ${theme === "light" ? "#000" : "#fff"}">${optionLabel}</span>
+//           <span style="margin: 0 4px; color: ${theme === "light" ? "#666" : "#9ca3af"}">|</span>
+//           <span style="color: ${theme === "light" ? "#666" : "#9ca3af"}">${timePart}</span>
+//           <span style="margin: 0 4px; color: ${theme === "light" ? "#666" : "#9ca3af"}">|</span>
+//           <span>O:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${open.toFixed(2)}</span></span>
+//           <span style="margin-left: 8px">H:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${high.toFixed(2)}</span></span>
+//           <span style="margin-left: 8px">L:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${low.toFixed(2)}</span></span>
+//           <span style="margin-left: 8px">C:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${close.toFixed(2)}</span></span>
+//         </div>
+//       `;
 //     });
 
 //     // Draw existing lines if they exist
@@ -907,9 +864,12 @@
 
 //     return () => {
 //       resizeObserver.disconnect();
+//       if (overlay.parentNode) {
+//         overlay.parentNode.removeChild(overlay);
+//       }
 //       chart.remove();
 //     };
-//   }, [data, theme, chartType, showVolume]);
+//   }, [data, theme, chartType, showVolume, optionLabel]);
 
 //   // Handle Apply Lines button click
 //   const handleDrawLines = () => {
@@ -921,7 +881,7 @@
 //     setLtp("");
 //     setSl("");
 //     setTarget("");
-//     setSelectedTime("");
+//     setSelectedTime("09:21");
 //     setQuantity("65");
 //     setIsEntrySet(false);
 //     setFirstHit(null);
@@ -956,19 +916,16 @@
 //     }
 //   };
 
-//   // Determine what to display
-//   const displayData = ohlcValues || lastCandle;
-//   const displayTime = ohlcValues
-//     ? ohlcValues.time
-//     : lastCandle
-//       ? lastCandle.time
-//       : "";
+//   // Handle option label edit
+//   const handleLabelSave = () => {
+//     setIsEditingLabel(false);
+//   };
 
-//   // Calculate candles after entry
-//   const candlesAfterEntry =
-//     entryTimestamp > 0
-//       ? formattedChartData.filter((c) => c.time > entryTimestamp).length
-//       : 0;
+//   // Calculate trade duration
+//   const tradeDuration =
+//     firstHit && selectedTime
+//       ? calculateDuration(selectedTime, firstHit.time.split(" ")[1])
+//       : "";
 
 //   return (
 //     <div className="relative w-full">
@@ -976,6 +933,43 @@
 //       <div className="flex flex-wrap justify-between items-start p-3 bg-white dark:bg-gray-900 shadow z-20">
 //         {/* Left side: Inputs */}
 //         <div className="flex flex-col gap-3">
+//           {/* Option Chain Label Input */}
+//           <div className="flex items-center gap-2 mb-2">
+//             <span className="text-sm text-gray-600 dark:text-gray-400">
+//               Instrument:
+//             </span>
+//             {isEditingLabel ? (
+//               <div className="flex items-center gap-2">
+//                 <input
+//                   type="text"
+//                   value={optionLabel}
+//                   onChange={(e) => setOptionLabel(e.target.value)}
+//                   onKeyPress={(e) => e.key === "Enter" && handleLabelSave()}
+//                   className="border dark:border-gray-600 dark:bg-gray-800 dark:text-white px-2 py-1 rounded text-sm w-48"
+//                   autoFocus
+//                 />
+//                 <button
+//                   onClick={handleLabelSave}
+//                   className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
+//                 >
+//                   Save
+//                 </button>
+//               </div>
+//             ) : (
+//               <div className="flex items-center gap-2">
+//                 <span className="font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded border border-blue-200 dark:border-blue-700">
+//                   {optionLabel}
+//                 </span>
+//                 <button
+//                   onClick={() => setIsEditingLabel(true)}
+//                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 text-sm"
+//                 >
+//                   Edit
+//                 </button>
+//               </div>
+//             )}
+//           </div>
+
 //           {/* Inputs row */}
 //           <div className="flex gap-3 items-center">
 //             {/* Time Input */}
@@ -988,7 +982,7 @@
 //                 value={selectedTime}
 //                 onChange={(e) => setSelectedTime(e.target.value)}
 //                 onKeyPress={handleKeyPress}
-//                 className="border dark:border-gray-600 dark:bg-gray-800 dark:text-white px-3 py-1 rounded w-28 focus:ring-2 focus:ring-blue-300"
+//                 className="border dark:border-gray-600 dark:bg-gray-800 dark:text-white px-3 py-1 rounded w-32 focus:ring-2 focus:ring-blue-300"
 //               />
 //             </div>
 
@@ -1080,36 +1074,6 @@
 
 //         {/* Right side: Chart controls */}
 //         <div className="flex items-center gap-3">
-//           {/* OHLC Display */}
-//           <div className="flex gap-4 bg-gray-50 dark:bg-gray-800 px-4 py-2 rounded-md text-[12px]">
-//             {["Open", "High", "Low", "Close"].map((label) => (
-//               <div key={label} className="text-center">
-//                 <div className="text-xs text-gray-500 dark:text-gray-400">
-//                   {label}
-//                 </div>
-//                 <div className="font-bold tw-text-[10px] dark:text-white">
-//                   {displayData ? (
-//                     <>
-//                       {displayData?.[
-//                         label.toLowerCase() as keyof OHLCValues
-//                       ]?.toFixed(2)}
-//                     </>
-//                   ) : (
-//                     0
-//                   )}
-//                 </div>
-//               </div>
-//             ))}
-//             <div className="text-center">
-//               <div className="text-xs text-gray-500 dark:text-gray-400">
-//                 Date & Time
-//               </div>
-//               <div className="font-bold dark:text-white uppercase">
-//                 {displayTime?.split("-")?.join("  ") || "No data"}
-//               </div>
-//             </div>
-//           </div>
-
 //           {/* Chart Type Selector */}
 //           <div className="relative">
 //             <select
@@ -1126,178 +1090,45 @@
 //             </div>
 //           </div>
 //         </div>
-//         <div className="grid grid-cols-1 md:grid-cols-2 w-full gap-5 mt-5">
-//           <div>
-//             {/* Entry Information */}
-//             {results && selectedTime && (
-//               <div className="hidden bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-//                 <div className="flex items-center gap-2 mb-2">
-//                   <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-//                   <h3 className="font-bold text-blue-700 dark:text-blue-300 text-sm">
-//                     Entry Information
-//                   </h3>
-//                 </div>
-//                 <div className="grid grid-cols-4 gap-4 text-sm">
-//                   <div>
-//                     <div className="text-xs text-gray-500 dark:text-gray-400">
-//                       Entry Time
-//                     </div>
-//                     <div className="font-bold dark:text-white">
-//                       {selectedTime}
-//                     </div>
-//                     {entryDateStr && (
-//                       <div className="text-xs text-gray-500 dark:text-gray-400">
-//                         {entryDateStr.split(" ")[0]}
-//                       </div>
-//                     )}
-//                   </div>
-//                   <div>
-//                     <div className="text-xs text-gray-500 dark:text-gray-400">
-//                       Entry Price
-//                     </div>
-//                     <div className="font-bold dark:text-white">
-//                       ₹{results.ltp.toFixed(2)}
-//                     </div>
-//                   </div>
-//                   <div>
-//                     <div className="text-xs text-gray-500 dark:text-gray-400">
-//                       Position
-//                     </div>
-//                     <div className="font-bold dark:text-white">
-//                       {results.ltp < results.target ? "LONG" : "SHORT"}
-//                     </div>
-//                   </div>
-//                   <div>
-//                     <div className="text-xs text-gray-500 dark:text-gray-400">
-//                       Candles to Check
-//                     </div>
-//                     <div className="font-bold dark:text-white">
-//                       {candlesAfterEntry} candles after {selectedTime}
-//                     </div>
-//                   </div>
-//                 </div>
-//               </div>
-//             )}
 
-//             {/* First Hit Card - Always show when we have results */}
-//             {results && (
-//               <div
-//                 className={`rounded-lg p-3 border ${
-//                   firstHit?.level === "SL"
-//                     ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
-//                     : firstHit?.level === "Target"
-//                       ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
-//                       : "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800"
-//                 }`}
-//               >
-//                 <div className="flex items-center gap-2 mb-2">
-//                   <div
-//                     className={`w-3 h-3 rounded-full ${
-//                       firstHit?.level === "SL"
-//                         ? "bg-red-500"
-//                         : firstHit?.level === "Target"
-//                           ? "bg-green-500"
-//                           : "bg-yellow-500"
-//                     }`}
-//                   ></div>
-//                   <h3
-//                     className={`font-bold text-sm ${
-//                       firstHit?.level === "SL"
-//                         ? "text-red-700 dark:text-red-300"
-//                         : firstHit?.level === "Target"
-//                           ? "text-green-700 dark:text-green-300"
-//                           : "text-yellow-700 dark:text-yellow-300"
-//                     }`}
-//                   >
-//                     {firstHit
-//                       ? `First Hit: ${firstHit.level}`
-//                       : "No Hit Detected"}
-//                     <span className="ml-2 text-xs bg-white dark:bg-gray-800 px-2 py-1 rounded">
-//                       {results.ltp < results.target
-//                         ? "LONG Position"
-//                         : "SHORT Position"}
-//                     </span>
-//                   </h3>
-//                 </div>
-
-//                 {firstHit ? (
-//                   <div className="space-y-2">
-//                     <div className="grid grid-cols-2 gap-4">
-//                       <div>
-//                         <div className="text-xs text-gray-500 dark:text-gray-400">
-//                           Hit Time
-//                         </div>
-//                         <div className="text-lg font-bold">{firstHit.time}</div>
-//                       </div>
-//                       <div>
-//                         <div className="text-xs text-gray-500 dark:text-gray-400">
-//                           Hit Price
-//                         </div>
-//                         <div className="text-lg font-bold">
-//                           ₹{firstHit.price.toFixed(2)}
-//                         </div>
-//                       </div>
-//                     </div>
-
-//                     <div className="text-xs text-gray-500 dark:text-gray-400 border-t pt-2">
-//                       {firstHit.level === "SL"
-//                         ? `Stop Loss triggered at ${firstHit.time}. Trade would have been exited with a loss.`
-//                         : `Target achieved at ${firstHit.time}. Trade would have been exited with a profit.`}
-//                     </div>
-//                   </div>
-//                 ) : (
-//                   <div className="space-y-2">
-//                     <div className="text-lg font-bold">
-//                       {selectedTime
-//                         ? `No SL or Target hit after ${selectedTime}`
-//                         : "No SL or Target hit in historical data"}
-//                     </div>
-//                     <div className="text-sm text-gray-600 dark:text-gray-300">
-//                       {candlesAfterEntry > 0
-//                         ? `Checked ${candlesAfterEntry} candles after entry, both levels remain untouched`
-//                         : `Checked ${formattedChartData.length} candles, both levels remain untouched`}
-//                     </div>
-//                     <div className="text-xs text-gray-500 dark:text-gray-400">
-//                       Entry time: {selectedTime || "Not specified"}
-//                     </div>
-//                   </div>
-//                 )}
-//               </div>
-//             )}
-//           </div>
-
-//           {/* Profit/Loss Cards */}
+//         {/* Trade Analysis Cards - Single Row */}
+//         <div className="w-full mt-5">
 //           {results && (
-//             <div className="grid grid-cols-3 gap-4">
+//             <div className="grid grid-cols-5 gap-4">
 //               {/* Loss Card (If SL hits) */}
 //               <div
 //                 className={`bg-red-50 dark:bg-red-900/20 border ${
 //                   firstHit?.level === "SL"
 //                     ? "border-red-400 dark:border-red-500 border-2"
 //                     : "border-red-200 dark:border-red-800"
-//                 } rounded-lg p-3`}
+//                 } rounded-lg p-3 flex items-center justify-between`}
 //               >
-//                 <div className="flex items-center gap-2 mb-2">
-//                   <div className="w-3 h-3 rounded-full bg-red-500"></div>
-//                   <h3 className="font-bold text-red-700 dark:text-red-300 text-sm">
-//                     If SL Hits {firstHit?.level === "SL" && "✓"}
-//                   </h3>
+//                 <div>
+//                   <div className="flex items-center gap-2 mb-2">
+//                     <div className="w-3 h-3 rounded-full bg-red-500"></div>
+//                     <h3 className="font-bold text-red-700 dark:text-red-300 text-sm">
+//                       If SL Hits
+//                     </h3>
+//                   </div>
+//                   <div className="space-y-1">
+//                     <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+//                       -₹
+//                       {Math.abs(results.totalLoss).toLocaleString("en-IN", {
+//                         minimumFractionDigits: 2,
+//                         maximumFractionDigits: 2,
+//                       })}
+//                     </div>
+//                     <div className="text-xs text-gray-600 dark:text-gray-300">
+//                       Per unit: ₹{results.lossPerUnit.toFixed(2)}
+//                     </div>
+//                     <div className="text-xs text-gray-600 dark:text-gray-300">
+//                       {results.lossPercentage}% loss
+//                     </div>
+//                   </div>
 //                 </div>
-//                 <div className="space-y-1">
-//                   <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-//                     -₹
-//                     {Math.abs(results.totalLoss).toLocaleString("en-IN", {
-//                       minimumFractionDigits: 2,
-//                       maximumFractionDigits: 2,
-//                     })}
-//                   </div>
-//                   <div className="text-xs text-gray-600 dark:text-gray-300">
-//                     Per unit: ₹{results.lossPerUnit.toFixed(2)}
-//                   </div>
-//                   <div className="text-xs text-gray-600 dark:text-gray-300">
-//                     {results.lossPercentage}% loss
-//                   </div>
-//                 </div>
+//                 {firstHit?.level === "SL" && (
+//                   <IconCoinRupeeFilled className="size-20 text-red-800" />
+//                 )}
 //               </div>
 
 //               {/* Margin Card */}
@@ -1320,10 +1151,6 @@
 //                     Entry: ₹{results.ltp.toFixed(2)} × Qty:{" "}
 //                     {results.quantity.toLocaleString("en-IN")}
 //                   </div>
-//                   <div className="text-xs text-gray-600 dark:text-gray-300">
-//                     {results.ltp.toFixed(2)} × {results.quantity} ={" "}
-//                     {results.totalMargin.toFixed(2)}
-//                   </div>
 //                 </div>
 //               </div>
 
@@ -1333,27 +1160,121 @@
 //                   firstHit?.level === "Target"
 //                     ? "border-green-400 dark:border-green-500 border-2"
 //                     : "border-green-200 dark:border-green-800"
-//                 } rounded-lg p-3`}
+//                 } rounded-lg p-3 flex items-center justify-between`}
 //               >
+//                 <div>
+//                   <div className="flex items-center gap-2 mb-2">
+//                     <div className="w-3 h-3 rounded-full bg-green-500"></div>
+//                     <h3 className="font-bold text-green-700 dark:text-green-300 text-sm">
+//                       If Target Hits
+//                     </h3>
+//                   </div>
+//                   <div className="space-y-1">
+//                     <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+//                       +₹
+//                       {results.totalProfit.toLocaleString("en-IN", {
+//                         minimumFractionDigits: 2,
+//                         maximumFractionDigits: 2,
+//                       })}
+//                     </div>
+//                     <div className="text-xs text-gray-600 dark:text-gray-300">
+//                       Per unit: ₹{results.profitPerUnit.toFixed(2)}
+//                     </div>
+//                     <div className="text-xs text-gray-600 dark:text-gray-300">
+//                       {results.profitPercentage}% profit
+//                     </div>
+//                   </div>
+//                 </div>
+
+//                 {firstHit?.level === "Target" && (
+//                   <IconCoinRupeeFilled className="size-20 text-green-800" />
+//                 )}
+//               </div>
+
+//               {/* First Hit Card - Integrated with Duration */}
+//               <div
+//                 className={`rounded-lg p-3 border flex justify-between items-center ${
+//                   firstHit?.level === "SL"
+//                     ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+//                     : firstHit?.level === "Target"
+//                       ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+//                       : "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800"
+//                 }`}
+//               >
+//                 <div>
+//                   <div className="flex items-center gap-2 mb-2">
+//                     <div
+//                       className={`w-3 h-3 rounded-full ${
+//                         firstHit?.level === "SL"
+//                           ? "bg-red-500"
+//                           : firstHit?.level === "Target"
+//                             ? "bg-green-500"
+//                             : "bg-yellow-500"
+//                       }`}
+//                     ></div>
+//                     <h3
+//                       className={`font-bold text-sm ${
+//                         firstHit?.level === "SL"
+//                           ? "text-red-700 dark:text-red-300"
+//                           : firstHit?.level === "Target"
+//                             ? "text-green-700 dark:text-green-300"
+//                             : "text-yellow-700 dark:text-yellow-300"
+//                       }`}
+//                     >
+//                       {firstHit ? `Hit: ${firstHit.level}` : "No Hit"}
+//                     </h3>
+//                   </div>
+
+//                   {firstHit ? (
+//                     <div className="space-y-1">
+//                       <div className="text-lg font-bold">
+//                         {firstHit.time.split(" ")[1]}
+//                       </div>
+//                       <div className="text-xs text-gray-600 dark:text-gray-300">
+//                         {tradeDuration && `Duration: ${tradeDuration}`}
+//                       </div>
+//                       <div className="text-xs text-gray-500 dark:text-gray-400">
+//                         Price: ₹{firstHit.price.toFixed(2)}
+//                       </div>
+//                     </div>
+//                   ) : (
+//                     <div className="space-y-1">
+//                       <div className="text-lg font-bold">Not Triggered</div>
+//                       <div className="text-xs text-gray-600 dark:text-gray-300">
+//                         {selectedTime
+//                           ? `No hit after ${selectedTime}`
+//                           : "No hit in data"}
+//                       </div>
+//                     </div>
+//                   )}
+//                 </div>
+
+//                 {firstHit?.level === "SL" ? (
+//                   <IconTargetOff className="size-20 text-red-800" />
+//                 ) : firstHit?.level === "Target" ? (
+//                   <IconTargetArrow className="size-20 text-green-800" />
+//                 ) : (
+//                   <></>
+//                 )}
+//               </div>
+
+//               {/* Position Info Card */}
+//               <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
 //                 <div className="flex items-center gap-2 mb-2">
-//                   <div className="w-3 h-3 rounded-full bg-green-500"></div>
-//                   <h3 className="font-bold text-green-700 dark:text-green-300 text-sm">
-//                     If Target Hits {firstHit?.level === "Target" && "✓"}
+//                   <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+//                   <h3 className="font-bold text-purple-700 dark:text-purple-300 text-sm">
+//                     Position Details
 //                   </h3>
 //                 </div>
 //                 <div className="space-y-1">
-//                   <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-//                     +₹
-//                     {results.totalProfit.toLocaleString("en-IN", {
-//                       minimumFractionDigits: 2,
-//                       maximumFractionDigits: 2,
-//                     })}
+//                   <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
+//                     {results.ltp < results.target ? "LONG" : "SHORT"}
 //                   </div>
 //                   <div className="text-xs text-gray-600 dark:text-gray-300">
-//                     Per unit: ₹{results.profitPerUnit.toFixed(2)}
+//                     Entry: {selectedTime || "Not set"}
 //                   </div>
 //                   <div className="text-xs text-gray-600 dark:text-gray-300">
-//                     {results.profitPercentage}% profit
+//                     Entry Price: ₹{results.ltp.toFixed(2)}
 //                   </div>
 //                 </div>
 //               </div>
@@ -1376,11 +1297,11 @@
 //         </div>
 //         <div className="flex items-center gap-2">
 //           <div className="w-4 h-0.5 bg-red-500"></div>
-//           <span className="dark:text-white">SL (Red Dashed)</span>
+//           <span className="dark:text-white">SL (Red)</span>
 //         </div>
 //         <div className="flex items-center gap-2">
 //           <div className="w-4 h-0.5 bg-green-500"></div>
-//           <span className="dark:text-white">Target (Green Dashed)</span>
+//           <span className="dark:text-white">Target (Green)</span>
 //         </div>
 //         {firstHit && (
 //           <div className="flex items-center gap-2">
@@ -1391,7 +1312,8 @@
 //               }}
 //             ></div>
 //             <span className="dark:text-white font-semibold">
-//               First Hit: {firstHit.level} at {firstHit.time.split(" ")[1]}
+//               Hit: {firstHit.level} at {firstHit.time.split(" ")[1]} (
+//               {tradeDuration})
 //             </span>
 //           </div>
 //         )}
@@ -1527,6 +1449,19 @@ const formatDateOnly = (timestamp: number): string => {
   return `${day}-${month}-${year}`;
 };
 
+// Helper function to format volume/OI with K, M, B suffixes
+const formatLargeNumber = (value: number): string => {
+  if (value >= 1000000000) {
+    return (value / 1000000000).toFixed(2) + "B";
+  } else if (value >= 1000000) {
+    return (value / 1000000).toFixed(2) + "M";
+  } else if (value >= 1000) {
+    return (value / 1000).toFixed(1) + "K";
+  } else {
+    return value.toString();
+  }
+};
+
 interface CandleData {
   time: number;
   open: number;
@@ -1534,6 +1469,7 @@ interface CandleData {
   low: number;
   close: number;
   volume?: number;
+  oi?: number; // Open Interest
 }
 
 interface OHLCValues {
@@ -1586,11 +1522,134 @@ const calculateDuration = (entryTime: string, exitTime: string): string => {
   }
 };
 
+// Function to aggregate data based on timeframe
+const aggregateDataByTimeframe = (
+  data: CandleData[],
+  timeframe: string,
+): CandleData[] => {
+  if (!data.length) return [];
+
+  // Get timeframe in minutes
+  let timeframeMinutes = 1; // default 1 minute
+  switch (timeframe) {
+    case "1min":
+      timeframeMinutes = 1;
+      break;
+    case "3min":
+      timeframeMinutes = 3;
+      break;
+    case "5min":
+      timeframeMinutes = 5;
+      break;
+    case "10min":
+      timeframeMinutes = 10;
+      break;
+    case "15min":
+      timeframeMinutes = 15;
+      break;
+    case "30min":
+      timeframeMinutes = 30;
+      break;
+    case "1hour":
+      timeframeMinutes = 60;
+      break;
+    default:
+      timeframeMinutes = 1;
+  }
+
+  const aggregatedData: CandleData[] = [];
+  let currentGroup: CandleData[] = [];
+  let currentGroupEndTime = 0;
+
+  // Sort data by time
+  const sortedData = [...data].sort((a, b) => a.time - b.time);
+
+  for (const candle of sortedData) {
+    const candleDate = new Date((candle.time + IST_OFFSET_SECONDS) * 1000);
+    const minutes = candleDate.getMinutes();
+
+    // Calculate which timeframe bucket this candle belongs to
+    const bucketMinutes =
+      Math.floor(minutes / timeframeMinutes) * timeframeMinutes;
+    const bucketTime = new Date(candleDate);
+    bucketTime.setMinutes(bucketMinutes, 0, 0);
+    const bucketTimestamp =
+      Math.floor(bucketTime.getTime() / 1000) - IST_OFFSET_SECONDS;
+
+    if (bucketTimestamp !== currentGroupEndTime) {
+      // Process previous group if exists
+      if (currentGroup.length > 0) {
+        const groupOpen = currentGroup[0].open;
+        const groupHigh = Math.max(...currentGroup.map((c) => c.high));
+        const groupLow = Math.min(...currentGroup.map((c) => c.low));
+        const groupClose = currentGroup[currentGroup.length - 1].close;
+        const groupVolume = currentGroup.reduce(
+          (sum, c) => sum + (c.volume || 0),
+          0,
+        );
+        const groupOI = currentGroup.reduce((sum, c) => sum + (c.oi || 0), 0);
+
+        aggregatedData.push({
+          time: currentGroupEndTime,
+          open: groupOpen,
+          high: groupHigh,
+          low: groupLow,
+          close: groupClose,
+          volume: groupVolume,
+          oi: groupOI,
+        });
+      }
+
+      // Start new group
+      currentGroup = [candle];
+      currentGroupEndTime = bucketTimestamp;
+    } else {
+      // Add to current group
+      currentGroup.push(candle);
+    }
+  }
+
+  // Process the last group
+  if (currentGroup.length > 0) {
+    const groupOpen = currentGroup[0].open;
+    const groupHigh = Math.max(...currentGroup.map((c) => c.high));
+    const groupLow = Math.min(...currentGroup.map((c) => c.low));
+    const groupClose = currentGroup[currentGroup.length - 1].close;
+    const groupVolume = currentGroup.reduce(
+      (sum, c) => sum + (c.volume || 0),
+      0,
+    );
+    const groupOI = currentGroup.reduce((sum, c) => sum + (c.oi || 0), 0);
+
+    aggregatedData.push({
+      time: currentGroupEndTime,
+      open: groupOpen,
+      high: groupHigh,
+      low: groupLow,
+      close: groupClose,
+      volume: groupVolume,
+      oi: groupOI,
+    });
+  }
+
+  return aggregatedData;
+};
+
+// Candle timeframe options
+const timeframeOptions = [
+  { label: "1 Minute", value: "1min" },
+  { label: "3 Minutes", value: "3min" },
+  { label: "5 Minutes", value: "5min" },
+  { label: "10 Minutes", value: "10min" },
+  { label: "15 Minutes", value: "15min" },
+  { label: "30 Minutes", value: "30min" },
+  { label: "1 Hour", value: "1hour" },
+];
+
 const MinuteChart = ({ data }: { data: any[] }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<any>(null);
   const candleSeriesRef = useRef<any>(null);
-  const volumeSeriesRef = useRef<any>(null);
 
   // Refs for price lines
   const ltpLineRef = useRef<any>(null);
@@ -1606,10 +1665,16 @@ const MinuteChart = ({ data }: { data: any[] }) => {
 
   const [ohlcValues, setOhlcValues] = useState<OHLCValues | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [showVolume, setShowVolume] = useState(false);
   const [chartType, setChartType] = useState<"candlestick" | "line" | "area">(
     "candlestick",
   );
+
+  // New state for timeframe
+  const [timeframe, setTimeframe] = useState("1min");
+  const [originalFormattedData, setOriginalFormattedData] = useState<
+    CandleData[]
+  >([]);
+  const [aggregatedData, setAggregatedData] = useState<CandleData[]>([]);
 
   // Store last candle data
   const [lastCandle, setLastCandle] = useState<OHLCValues | null>(null);
@@ -1627,8 +1692,21 @@ const MinuteChart = ({ data }: { data: any[] }) => {
   const [optionLabel, setOptionLabel] = useState("NIFTY 50");
   const [isEditingLabel, setIsEditingLabel] = useState(false);
 
-  // Format data for chart
-  const formatData = useCallback(() => {
+  // State for hover data
+  const [hoverData, setHoverData] = useState<{
+    time: string;
+    o: number;
+    h: number;
+    l: number;
+    c: number;
+    volume?: number;
+    oi?: number;
+    change?: number;
+    changePercent?: number;
+  } | null>(null);
+
+  // Format raw data from props
+  const formatRawData = useCallback(() => {
     if (!data?.length) return [];
 
     const formattedData: CandleData[] = [];
@@ -1655,6 +1733,14 @@ const MinuteChart = ({ data }: { data: any[] }) => {
         const close = parseFloat(d.Close || d.close || d.C || 0);
         const volume =
           d.Volume !== undefined ? parseFloat(d.Volume) : undefined;
+        const oi =
+          d.OI !== undefined
+            ? parseFloat(d.OI)
+            : d["Open Interest"] !== undefined
+              ? parseFloat(d["Open Interest"])
+              : d["OpenInterest"] !== undefined
+                ? parseFloat(d["OpenInterest"])
+                : undefined;
 
         if (isNaN(open) || isNaN(high) || isNaN(low) || isNaN(close)) {
           continue;
@@ -1667,27 +1753,65 @@ const MinuteChart = ({ data }: { data: any[] }) => {
           low,
           close,
           volume,
+          oi,
         });
-
-        // Store the last candle data
-        if (i === data.length - 1) {
-          const dateStr = formatDateWithTime(currentTime);
-          setLastCandle({
-            open,
-            high,
-            low,
-            close,
-            time: dateStr,
-          });
-        }
       } catch (error) {
         console.error(`Error processing row ${i}:`, error);
       }
     }
 
-    setFormattedChartData(formattedData);
     return formattedData;
   }, [data]);
+
+  // Update aggregated data when timeframe changes
+  useEffect(() => {
+    if (originalFormattedData.length > 0) {
+      const aggregated = aggregateDataByTimeframe(
+        originalFormattedData,
+        timeframe,
+      );
+      setAggregatedData(aggregated);
+
+      // Update formattedChartData for the rest of the app
+      setFormattedChartData(aggregated);
+
+      // Store last candle data
+      if (aggregated.length > 0) {
+        const lastCandle = aggregated[aggregated.length - 1];
+        const dateStr = formatDateWithTime(lastCandle.time);
+        setLastCandle({
+          open: lastCandle.open,
+          high: lastCandle.high,
+          low: lastCandle.low,
+          close: lastCandle.close,
+          time: dateStr,
+        });
+      }
+    }
+  }, [originalFormattedData, timeframe]);
+
+  // Initialize original formatted data
+  useEffect(() => {
+    const formatted = formatRawData();
+    setOriginalFormattedData(formatted);
+
+    // Also set aggregated data for 1min initially
+    const aggregated = aggregateDataByTimeframe(formatted, "1min");
+    setAggregatedData(aggregated);
+    setFormattedChartData(aggregated);
+
+    if (aggregated.length > 0) {
+      const lastCandle = aggregated[aggregated.length - 1];
+      const dateStr = formatDateWithTime(lastCandle.time);
+      setLastCandle({
+        open: lastCandle.open,
+        high: lastCandle.high,
+        low: lastCandle.low,
+        close: lastCandle.close,
+        time: dateStr,
+      });
+    }
+  }, [data, formatRawData]);
 
   // Calculate profit/loss and margin
   const calculateResults = useCallback(() => {
@@ -1887,11 +2011,6 @@ const MinuteChart = ({ data }: { data: any[] }) => {
     setFirstHit(hitResult);
   }, [formattedChartData, results, entryTimestamp, entryDateStr, selectedTime]);
 
-  // Update formatted data when data changes
-  useEffect(() => {
-    formatData();
-  }, [data, formatData]);
-
   // Update entry timestamp when selected time changes
   useEffect(() => {
     if (selectedTime && formattedChartData.length > 0) {
@@ -1980,9 +2099,10 @@ const MinuteChart = ({ data }: { data: any[] }) => {
   useEffect(() => {
     if (!chartRef.current) return;
 
-    const formattedData = formatData();
+    // Use aggregated data for the chart
+    const chartData = aggregatedData;
 
-    if (formattedData.length === 0) {
+    if (chartData.length === 0) {
       console.warn("No valid data to display");
       return;
     }
@@ -2031,7 +2151,7 @@ const MinuteChart = ({ data }: { data: any[] }) => {
           const hours = date.getHours();
           const minutes = date.getMinutes();
 
-          if ((hours === 0 && minutes === 0) || formattedData.length < 50) {
+          if ((hours === 0 && minutes === 0) || chartData.length < 50) {
             return formatDateOnly(time);
           }
           return formatToIST(time);
@@ -2043,6 +2163,9 @@ const MinuteChart = ({ data }: { data: any[] }) => {
           top: 0.1,
           bottom: 0.1,
         },
+      },
+      leftPriceScale: {
+        visible: false,
       },
       localization: {
         timeFormatter: (time: number) => {
@@ -2066,10 +2189,11 @@ const MinuteChart = ({ data }: { data: any[] }) => {
         wickUpColor: theme === "light" ? "#16a34a" : "#22c55e",
         wickDownColor: theme === "light" ? "#dc2626" : "#ef4444",
         priceLineVisible: false,
+        priceScaleId: "right",
       });
 
       series.setData(
-        formattedData.map((d) => ({
+        chartData.map((d) => ({
           time: d.time,
           open: d.open,
           high: d.high,
@@ -2082,6 +2206,7 @@ const MinuteChart = ({ data }: { data: any[] }) => {
         color: theme === "light" ? "#3b82f6" : "#60a5fa",
         lineWidth: 1,
         priceLineVisible: false,
+        priceScaleId: "right",
       };
 
       if (chartType === "area") {
@@ -2098,7 +2223,7 @@ const MinuteChart = ({ data }: { data: any[] }) => {
       series = chart.addLineSeries(seriesOptions);
 
       series.setData(
-        formattedData.map((d) => ({
+        chartData.map((d) => ({
           time: d.time,
           value: d.close,
         })),
@@ -2107,35 +2232,9 @@ const MinuteChart = ({ data }: { data: any[] }) => {
 
     candleSeriesRef.current = series;
 
-    // Add volume series if enabled
-    if (showVolume && formattedData[0]?.volume !== undefined) {
-      volumeSeriesRef.current = chart.addHistogramSeries({
-        priceFormat: { type: "volume" },
-        priceScaleId: "volume",
-      });
-
-      volumeSeriesRef.current.setData(
-        formattedData.map((d: any) => ({
-          time: d.time,
-          value: d.volume ?? 0,
-          color: d.close >= d.open ? "#16a34a" : "#dc2626",
-        })),
-      );
-
-      chart.priceScale("volume").applyOptions({
-        scaleMargins: {
-          top: 0.8,
-          bottom: 0,
-        },
-      });
-    } else if (volumeSeriesRef.current) {
-      chart.removeSeries(volumeSeriesRef.current);
-      volumeSeriesRef.current = null;
-    }
-
-    if (formattedData.length > 0) {
-      const firstTime: any = formattedData[0].time;
-      const lastTime: any = formattedData[formattedData.length - 1].time;
+    if (chartData.length > 0) {
+      const firstTime: any = chartData[0].time;
+      const lastTime: any = chartData[chartData.length - 1].time;
 
       chart.timeScale().setVisibleRange({
         from: firstTime,
@@ -2155,33 +2254,80 @@ const MinuteChart = ({ data }: { data: any[] }) => {
     overlay.style.zIndex = "1000";
     overlay.style.pointerEvents = "none";
     overlay.style.backgroundColor =
-      theme === "light" ? "rgba(255, 255, 255, 0.9)" : "rgba(26, 26, 26, 0.9)";
+      theme === "light"
+        ? "rgba(255, 255, 255, 0.95)"
+        : "rgba(26, 26, 26, 0.95)";
     overlay.style.border = `1px solid ${theme === "light" ? "#d1d5db" : "#4b5563"}`;
-    overlay.style.borderRadius = "4px";
-    overlay.style.padding = "4px 8px";
-    overlay.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
+    overlay.style.borderRadius = "6px";
+    overlay.style.padding = "6px 10px";
+    overlay.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.15)";
+    overlay.style.minWidth = "45%"; // Increased width for OI
+    overlay.style.fontFamily = "'Roboto Mono', monospace, sans-serif";
 
     const chartContainer = chartRef.current;
     chartContainer.style.position = "relative";
     chartContainer.appendChild(overlay);
 
     // Get last candle data for default display
-    const lastCandle = formattedData[formattedData.length - 1];
+    const lastCandle = chartData[chartData.length - 1];
     if (lastCandle) {
       const lastTimeStr = formatDateWithTime(lastCandle.time);
       const timePart =
         lastTimeStr.split(" ")[1] + " " + lastTimeStr.split(" ")[2];
+      const change = lastCandle.close - lastCandle.open;
+      const changePercent = (change / lastCandle.open) * 100;
+
+      const defaultHoverData = {
+        time: lastTimeStr,
+        o: lastCandle.open,
+        h: lastCandle.high,
+        l: lastCandle.low,
+        c: lastCandle.close,
+        volume: lastCandle.volume,
+        oi: lastCandle.oi,
+        change,
+        changePercent,
+      };
+
+      setHoverData(defaultHoverData);
 
       overlay.innerHTML = `
-        <div style="font-family: monospace; font-size: 11px; color: ${theme === "light" ? "#333" : "#d1d5db"}">
-          <span style="font-weight: bold; color: ${theme === "light" ? "#000" : "#fff"}">${optionLabel}</span>
-          <span style="margin: 0 4px; color: ${theme === "light" ? "#666" : "#9ca3af"}">|</span>
-          <span style="color: ${theme === "light" ? "#666" : "#9ca3af"}">${timePart}</span>
-          <span style="margin: 0 4px; color: ${theme === "light" ? "#666" : "#9ca3af"}">|</span>
-          <span>O:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${lastCandle.open.toFixed(2)}</span></span>
-          <span style="margin-left: 8px">H:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${lastCandle.high.toFixed(2)}</span></span>
-          <span style="margin-left: 8px">L:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${lastCandle.low.toFixed(2)}</span></span>
-          <span style="margin-left: 8px">C:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${lastCandle.close.toFixed(2)}</span></span>
+        <div style="font-size: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-weight: bold; font-size: 13px; color: ${theme === "light" ? "#000" : "#fff"}">${optionLabel} (${timeframe})</span>
+            <span style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">${timePart}</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 4px;">
+            <div>
+              <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">O</div>
+              <div style="color: ${theme === "light" ? "#333" : "#fff"}; font-weight: bold;">${lastCandle.open.toFixed(2)}</div>
+            </div>
+            <div>
+              <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">H</div>
+              <div style="color: ${theme === "light" ? "#333" : "#fff"}; font-weight: bold;">${lastCandle.high.toFixed(2)}</div>
+            </div>
+            <div>
+              <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">L</div>
+              <div style="color: ${theme === "light" ? "#333" : "#fff"}; font-weight: bold;">${lastCandle.low.toFixed(2)}</div>
+            </div>
+            <div>
+              <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">C</div>
+              <div style="color: ${lastCandle.close >= lastCandle.open ? (theme === "light" ? "#16a34a" : "#22c55e") : theme === "light" ? "#dc2626" : "#ef4444"}; font-weight: bold;">${lastCandle.close.toFixed(2)}</div>
+            </div>
+           
+            <div>
+              <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">Volume</div>
+              <div style="color: ${theme === "light" ? "#333" : "#fff"}; font-weight: bold;">
+                ${lastCandle.volume ? formatLargeNumber(lastCandle.volume) : "N/A"}
+              </div>
+            </div>
+            <div>
+              <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">OI</div>
+              <div style="color: ${theme === "light" ? "#333" : "#fff"}; font-weight: bold;">
+                ${lastCandle.oi !== undefined ? formatLargeNumber(lastCandle.oi) : "N/A"}
+              </div>
+            </div>
+          </div>
         </div>
       `;
     }
@@ -2194,17 +2340,58 @@ const MinuteChart = ({ data }: { data: any[] }) => {
           const lastTimeStr = formatDateWithTime(lastCandle.time);
           const timePart =
             lastTimeStr.split(" ")[1] + " " + lastTimeStr.split(" ")[2];
+          const change = lastCandle.close - lastCandle.open;
+          const changePercent = (change / lastCandle.open) * 100;
+
+          setHoverData({
+            time: lastTimeStr,
+            o: lastCandle.open,
+            h: lastCandle.high,
+            l: lastCandle.low,
+            c: lastCandle.close,
+            volume: lastCandle.volume,
+            oi: lastCandle.oi,
+            change,
+            changePercent,
+          });
 
           overlay.innerHTML = `
-            <div style="font-family: monospace; font-size: 11px; color: ${theme === "light" ? "#333" : "#d1d5db"}">
-              <span style="font-weight: bold; color: ${theme === "light" ? "#000" : "#fff"}">${optionLabel}</span>
-              <span style="margin: 0 4px; color: ${theme === "light" ? "#666" : "#9ca3af"}">|</span>
-              <span style="color: ${theme === "light" ? "#666" : "#9ca3af"}">${timePart}</span>
-              <span style="margin: 0 4px; color: ${theme === "light" ? "#666" : "#9ca3af"}">|</span>
-              <span>O:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${lastCandle.open.toFixed(2)}</span></span>
-              <span style="margin-left: 8px">H:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${lastCandle.high.toFixed(2)}</span></span>
-              <span style="margin-left: 8px">L:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${lastCandle.low.toFixed(2)}</span></span>
-              <span style="margin-left: 8px">C:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${lastCandle.close.toFixed(2)}</span></span>
+            <div style="font-size: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="font-weight: bold; font-size: 13px; color: ${theme === "light" ? "#000" : "#fff"}">${optionLabel} (${timeframe})</span>
+                <span style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">${timePart}</span>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 4px;">
+                <div>
+                  <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">O</div>
+                  <div style="color: ${theme === "light" ? "#333" : "#fff"}; font-weight: bold;">${lastCandle.open.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">H</div>
+                  <div style="color: ${theme === "light" ? "#333" : "#fff"}; font-weight: bold;">${lastCandle.high.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">L</div>
+                  <div style="color: ${theme === "light" ? "#333" : "#fff"}; font-weight: bold;">${lastCandle.low.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">C</div>
+                  <div style="color: ${lastCandle.close >= lastCandle.open ? (theme === "light" ? "#16a34a" : "#22c55e") : theme === "light" ? "#dc2626" : "#ef4444"}; font-weight: bold;">${lastCandle.close.toFixed(2)}</div>
+                </div>
+               
+                <div>
+                  <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">Volume</div>
+                  <div style="color: ${theme === "light" ? "#333" : "#fff"}; font-weight: bold;">
+                    ${lastCandle.volume ? formatLargeNumber(lastCandle.volume) : "N/A"}
+                  </div>
+                </div>
+                <div>
+                  <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">OI</div>
+                  <div style="color: ${theme === "light" ? "#333" : "#fff"}; font-weight: bold;">
+                    ${lastCandle.oi !== undefined ? formatLargeNumber(lastCandle.oi) : "N/A"}
+                  </div>
+                </div>
+              </div>
             </div>
           `;
         }
@@ -2226,20 +2413,73 @@ const MinuteChart = ({ data }: { data: any[] }) => {
         open = high = low = close = value;
       }
 
+      // Find the candle data from aggregated data
+      let volume = 0;
+      let oi = 0;
+      for (const candle of chartData) {
+        if (candle.time === param.time) {
+          volume = candle.volume || 0;
+          oi = candle.oi || 0;
+          break;
+        }
+      }
+
       const timeStr = formatDateWithTime(param.time);
       const timePart = timeStr.split(" ")[1] + " " + timeStr.split(" ")[2];
+      const change = close - open;
+      const changePercent = (change / open) * 100;
+
+      // Update hover data state
+      setHoverData({
+        time: timeStr,
+        o: open,
+        h: high,
+        l: low,
+        c: close,
+        volume,
+        oi,
+        change,
+        changePercent,
+      });
 
       // Update overlay with hover data
       overlay.innerHTML = `
-        <div style="font-family: monospace; font-size: 11px; color: ${theme === "light" ? "#333" : "#d1d5db"}">
-          <span style="font-weight: bold; color: ${theme === "light" ? "#000" : "#fff"}">${optionLabel}</span>
-          <span style="margin: 0 4px; color: ${theme === "light" ? "#666" : "#9ca3af"}">|</span>
-          <span style="color: ${theme === "light" ? "#666" : "#9ca3af"}">${timePart}</span>
-          <span style="margin: 0 4px; color: ${theme === "light" ? "#666" : "#9ca3af"}">|</span>
-          <span>O:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${open.toFixed(2)}</span></span>
-          <span style="margin-left: 8px">H:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${high.toFixed(2)}</span></span>
-          <span style="margin-left: 8px">L:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${low.toFixed(2)}</span></span>
-          <span style="margin-left: 8px">C:<span style="color: ${theme === "light" ? "#333" : "#fff"}">${close.toFixed(2)}</span></span>
+        <div style="font-size: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-weight: bold; font-size: 13px; color: ${theme === "light" ? "#000" : "#fff"}">${optionLabel} (${timeframe})</span>
+            <span style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">${timePart}</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 4px;">
+            <div>
+              <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">O</div>
+              <div style="color: ${theme === "light" ? "#333" : "#fff"}; font-weight: bold;">${open.toFixed(2)}</div>
+            </div>
+            <div>
+              <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">H</div>
+              <div style="color: ${theme === "light" ? "#333" : "#fff"}; font-weight: bold;">${high.toFixed(2)}</div>
+            </div>
+            <div>
+              <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">L</div>
+              <div style="color: ${theme === "light" ? "#333" : "#fff"}; font-weight: bold;">${low.toFixed(2)}</div>
+            </div>
+            <div>
+              <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">C</div>
+              <div style="color: ${close >= open ? (theme === "light" ? "#16a34a" : "#22c55e") : theme === "light" ? "#dc2626" : "#ef4444"}; font-weight: bold;">${close.toFixed(2)}</div>
+            </div>
+      
+            <div>
+              <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">Volume</div>
+              <div style="color: ${theme === "light" ? "#333" : "#fff"}; font-weight: bold;">
+                ${volume ? formatLargeNumber(volume) : "N/A"}
+              </div>
+            </div>
+            <div>
+              <div style="color: ${theme === "light" ? "#666" : "#9ca3af"}; font-size: 11px;">OI</div>
+              <div style="color: ${theme === "light" ? "#333" : "#fff"}; font-weight: bold;">
+                ${oi !== undefined && oi > 0 ? formatLargeNumber(oi) : "N/A"}
+              </div>
+            </div>
+          </div>
         </div>
       `;
     });
@@ -2273,7 +2513,7 @@ const MinuteChart = ({ data }: { data: any[] }) => {
       }
       chart.remove();
     };
-  }, [data, theme, chartType, showVolume, optionLabel]);
+  }, [theme, chartType, optionLabel, timeframe, aggregatedData]);
 
   // Handle Apply Lines button click
   const handleDrawLines = () => {
@@ -2323,6 +2563,11 @@ const MinuteChart = ({ data }: { data: any[] }) => {
   // Handle option label edit
   const handleLabelSave = () => {
     setIsEditingLabel(false);
+  };
+
+  // Handle timeframe change
+  const handleTimeframeChange = (value: string) => {
+    setTimeframe(value);
   };
 
   // Calculate trade duration
@@ -2376,6 +2621,29 @@ const MinuteChart = ({ data }: { data: any[] }) => {
 
           {/* Inputs row */}
           <div className="flex gap-3 items-center">
+            {/* Timeframe Selector */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500 dark:text-gray-400">
+                Timeframe
+              </label>
+              <div className="relative">
+                <select
+                  value={timeframe}
+                  onChange={(e) => handleTimeframeChange(e.target.value)}
+                  className="border dark:border-gray-600 dark:bg-gray-800 dark:text-white px-3 py-1 rounded appearance-none cursor-pointer pr-8 w-32"
+                >
+                  {timeframeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
+                  ▼
+                </div>
+              </div>
+            </div>
+
             {/* Time Input */}
             <div className="flex flex-col gap-1">
               <label className="text-xs text-gray-500 dark:text-gray-400">
@@ -2477,7 +2745,7 @@ const MinuteChart = ({ data }: { data: any[] }) => {
         </div>
 
         {/* Right side: Chart controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mt-2">
           {/* Chart Type Selector */}
           <div className="relative">
             <select
