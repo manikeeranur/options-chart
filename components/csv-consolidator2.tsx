@@ -23,7 +23,6 @@ import {
   Zap,
   Target,
   Clock,
-  Compare,
   GitCompare,
 } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -167,6 +166,7 @@ const CSVConsolidator2 = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Parse CSV content with option type detection
+  // Parse CSV content with option type detection
   const parseCSVContent = useCallback(
     (text: string, fileName: string): CandleData[] => {
       const lines = text.split("\n").filter((line) => line.trim());
@@ -199,6 +199,29 @@ const CSVConsolidator2 = () => {
         strikePrice = parseInt(strikeMatch[1]);
       }
 
+      // Find column indices
+      const openIndex = headers.findIndex((h) => h === "open" || h === "o");
+      const highIndex = headers.findIndex((h) => h === "high" || h === "h");
+      const lowIndex = headers.findIndex((h) => h === "low" || h === "l");
+      const closeIndex = headers.findIndex((h) => h === "close" || h === "c");
+      const volumeIndex = headers.findIndex(
+        (h) => h === "volume" || h === "vol",
+      );
+      const oiIndex = headers.findIndex(
+        (h) =>
+          h === "oi" ||
+          h === "open interest" ||
+          h === "openinterest" ||
+          h === "open_int",
+      );
+      const dateIndex = headers.findIndex(
+        (h) => h === "date" || h === "datetime",
+      );
+      const timeIndex = headers.findIndex((h) => h === "time");
+
+      // Store previous close for return calculation
+      let prevClose: number | null = null;
+
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
@@ -206,42 +229,43 @@ const CSVConsolidator2 = () => {
         const values = line
           .split(delimiter)
           .map((v) => v.trim().replace(/"/g, ""));
-        const row: any = {};
 
-        headers.forEach((header, index) => {
-          if (values[index] !== undefined) {
-            row[header] = values[index];
-          }
-        });
+        // Helper function to safely parse values
+        const getValue = (index: number, defaultValue: any = 0) => {
+          return index >= 0 && values[index] !== undefined
+            ? values[index]
+            : defaultValue;
+        };
 
         let dateStr = "";
         let timeStr = "09:15";
 
-        if (row.date) {
-          const dateValue = row.date;
-          if (dateValue.includes(" ") || dateValue.includes("T")) {
-            const dateTimeParts = dateValue.split(/[\sT]/);
-            dateStr = dateTimeParts[0];
-            if (dateTimeParts[1]) {
-              timeStr = dateTimeParts[1].substring(0, 5);
+        // Parse date and time
+        if (dateIndex >= 0) {
+          const dateValue = getValue(dateIndex, "");
+          if (dateValue) {
+            if (dateValue.includes(" ") || dateValue.includes("T")) {
+              const dateTimeParts = dateValue.split(/[\sT]/);
+              dateStr = dateTimeParts[0];
+              if (dateTimeParts[1]) {
+                timeStr = dateTimeParts[1].substring(0, 5);
+              }
+            } else {
+              dateStr = dateValue;
+              if (timeIndex >= 0) {
+                const timeValue = getValue(timeIndex, "09:15");
+                timeStr = timeValue.substring(0, 5);
+              }
             }
-          } else {
-            dateStr = dateValue;
-            timeStr = row.time || "09:15";
           }
         }
 
-        const open = parseFloat(row.open) || parseFloat(row.o) || 0;
-        const high = parseFloat(row.high) || parseFloat(row.h) || 0;
-        const low = parseFloat(row.low) || parseFloat(row.l) || 0;
-        const close = parseFloat(row.close) || parseFloat(row.c) || 0;
-        const volume = parseFloat(row.volume) || parseFloat(row.vol) || 0;
-        const oi =
-          parseFloat(row.oi) ||
-          parseFloat(row["open interest"]) ||
-          parseFloat(row.openinterest) ||
-          parseFloat(row["open_int"]) ||
-          0;
+        const open = parseFloat(getValue(openIndex, 0));
+        const high = parseFloat(getValue(highIndex, 0));
+        const low = parseFloat(getValue(lowIndex, 0));
+        const close = parseFloat(getValue(closeIndex, 0));
+        const volume = parseFloat(getValue(volumeIndex, 0));
+        const oi = parseFloat(getValue(oiIndex, 0));
 
         if (!isNaN(open) && !isNaN(high) && !isNaN(low) && !isNaN(close)) {
           const bodySize = Math.abs(close - open);
@@ -250,19 +274,18 @@ const CSVConsolidator2 = () => {
 
           const candleSize = high - low;
 
+          // Calculate VWAP
           cumulativeVolume += volume;
           cumulativeValue += ((open + high + low + close) / 4) * volume;
           const vwap =
             cumulativeVolume > 0 ? cumulativeValue / cumulativeVolume : close;
 
-          const prevClose =
-            i > 1
-              ? parseFloat(
-                  lines[i - 1].split(delimiter)[headers.indexOf("close")] ||
-                    close,
-                )
-              : close;
-          const returnPercent = ((close - prevClose) / prevClose) * 100;
+          // Calculate return percentage using previous close
+          let returnPercent = 0;
+          if (prevClose !== null && prevClose !== 0) {
+            returnPercent = ((close - prevClose) / prevClose) * 100;
+          }
+          prevClose = close;
 
           candleData.push({
             date: dateStr,
