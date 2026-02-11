@@ -1,9 +1,9 @@
-import CSVConsolidator2 from "@/components/csv-consolidator2";
+import CePeDualChart from "@/components/ce-pe-dual-chart";
 
 export default function Page() {
   return (
     <div className="tw-p-6 ">
-      <CSVConsolidator2 />
+      <CePeDualChart />
     </div>
   );
 }
