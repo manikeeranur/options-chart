@@ -2958,7 +2958,7 @@ const MinuteChart = ({ data }: { data: any[] }) => {
       {/* Chart Container */}
       <div
         ref={chartRef}
-        className="w-full h-[350px] md:h-[calc(100vh-200px)]"
+        className="w-full h-[350px] md:h-[calc(100vh-300px)]"
       />
 
       {/* Legend for Lines */}
