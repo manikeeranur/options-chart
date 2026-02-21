@@ -1045,24 +1045,12 @@ const MinuteAnalysisAllInOne: React.FC = () => {
     const cePriceChange = ((ceEndPrice - ceStartPrice) / ceStartPrice) * 100;
     const pePriceChange = ((peEndPrice - peStartPrice) / peStartPrice) * 100;
 
-    const volumeLeader =
-      ceCumulativeVolume > peCumulativeVolume
-        ? "CE"
-        : peCumulativeVolume > ceCumulativeVolume
-          ? "PE"
-          : "Equal";
-    const oiLeader =
-      ceCumulativeOI > peCumulativeOI
-        ? "CE"
-        : peCumulativeOI > ceCumulativeOI
-          ? "PE"
-          : "Equal";
-    const priceLeader =
-      cePriceChange > pePriceChange
-        ? "CE"
-        : pePriceChange > pePriceChange
-          ? "PE"
-          : "Equal";
+    // Modified to never show "Equal" - always pick CE or PE (default to CE if exactly equal)
+    const volumeLeader = ceCumulativeVolume >= peCumulativeVolume ? "CE" : "PE";
+
+    const oiLeader = ceCumulativeOI >= peCumulativeOI ? "CE" : "PE";
+
+    const priceLeader = cePriceChange >= pePriceChange ? "CE" : "PE"; // Fixed: now correctly compares CE vs PE
 
     return {
       timeRange: `${startTime} - ${endTime}`,
