@@ -17,6 +17,11 @@ import {
   Download,
   FileDown,
   Scale,
+  FolderOpen,
+  Loader,
+  ChevronDown,
+  ChevronRight,
+  Folder,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -174,6 +179,33 @@ interface DateOption {
   peStrike: number;
 }
 
+// Google Drive interfaces
+interface GoogleDriveFile {
+  name: string;
+  id: string;
+  content: string;
+  size?: number;
+  lastUpdated?: string;
+}
+
+interface GoogleDriveFolder {
+  name: string;
+  id: string;
+  files: GoogleDriveFile[];
+}
+
+interface GoogleDriveData {
+  success: boolean;
+  mainFolderName: string;
+  mainFolderId: string;
+  folders: GoogleDriveFolder[];
+  files: GoogleDriveFile[];
+  summary: {
+    totalFolders: number;
+    totalFiles: number;
+  };
+}
+
 // Custom Calendar icon component
 const CalendarIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -195,6 +227,233 @@ const CalendarIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+// Folder Tree Component for Google Drive
+const FolderTree: React.FC<{
+  data: GoogleDriveData;
+  onSelectFiles: (files: { content: string; name: string }[]) => void;
+  isProcessing: boolean;
+}> = ({ data, onSelectFiles, isProcessing }) => {
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(false);
+
+  const toggleFolder = (folderId: string) => {
+    setExpandedFolders((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(folderId)) {
+        newSet.delete(folderId);
+      } else {
+        newSet.add(folderId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleFile = (fileId: string) => {
+    setSelectedFiles((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(fileId)) {
+        newSet.delete(fileId);
+      } else {
+        newSet.add(fileId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllInFolder = (
+    folderFiles: GoogleDriveFile[],
+    checked: boolean,
+  ) => {
+    setSelectedFiles((prev) => {
+      const newSet = new Set(prev);
+      folderFiles.forEach((file) => {
+        if (checked) {
+          newSet.add(file.id);
+        } else {
+          newSet.delete(file.id);
+        }
+      });
+      return newSet;
+    });
+  };
+
+  const loadSelectedFiles = async () => {
+    setLoading(true);
+    try {
+      const allFiles: { content: string; name: string }[] = [];
+
+      data.files.forEach((file) => {
+        if (selectedFiles.has(file.id)) {
+          allFiles.push({
+            content: file.content,
+            name: file.name,
+          });
+        }
+      });
+
+      data.folders.forEach((folder) => {
+        folder.files.forEach((file) => {
+          if (selectedFiles.has(file.id)) {
+            allFiles.push({
+              content: file.content,
+              name: `${folder.name}/${file.name}`,
+            });
+          }
+        });
+      });
+
+      onSelectFiles(allFiles);
+    } catch (error) {
+      console.error("Error loading files:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getSelectedCount = () => selectedFiles.size;
+  const getTotalFiles = () =>
+    data.files.length +
+    data.folders.reduce((acc, f) => acc + f.files.length, 0);
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg p-4">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Folder className="w-5 h-5 text-blue-600" />
+          <h3 className="font-semibold text-gray-900">{data.mainFolderName}</h3>
+          <span className="text-xs text-gray-500">
+            ({getTotalFiles()} files, {data.summary.totalFolders} folders)
+          </span>
+        </div>
+        <button
+          onClick={loadSelectedFiles}
+          disabled={getSelectedCount() === 0 || loading || isProcessing}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            getSelectedCount() > 0 && !loading && !isProcessing
+              ? "bg-green-600 hover:bg-green-700 text-white"
+              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+          }`}
+        >
+          {loading ? (
+            <Loader className="w-4 h-4 animate-spin" />
+          ) : (
+            `Load Selected (${getSelectedCount()})`
+          )}
+        </button>
+      </div>
+
+      <div className="space-y-2 max-h-[400px] overflow-y-auto border border-gray-200 rounded-lg p-3">
+        {data.files.length > 0 && (
+          <div className="mb-2">
+            <div className="flex items-center gap-2 py-1 px-2 bg-gray-50 rounded">
+              <Folder className="w-4 h-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">
+                Main Folder
+              </span>
+              <span className="text-xs text-gray-500">
+                ({data.files.length} files)
+              </span>
+              <button
+                onClick={() => {
+                  const allChecked = data.files.every((f) =>
+                    selectedFiles.has(f.id),
+                  );
+                  selectAllInFolder(data.files, !allChecked);
+                }}
+                className="ml-auto text-xs text-blue-600 hover:text-blue-700"
+              >
+                {data.files.every((f) => selectedFiles.has(f.id))
+                  ? "Deselect All"
+                  : "Select All"}
+              </button>
+            </div>
+            <div className="ml-4 space-y-1 mt-1">
+              {data.files.map((file) => (
+                <div
+                  key={file.id}
+                  className="flex items-center gap-2 py-1 px-2 hover:bg-gray-50 rounded"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedFiles.has(file.id)}
+                    onChange={() => toggleFile(file.id)}
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  />
+                  <FileText className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm text-gray-700 flex-1">
+                    {file.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {data.folders.map((folder) => (
+          <div key={folder.id} className="mb-2">
+            <div
+              className="flex items-center gap-2 py-1 px-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100"
+              onClick={() => toggleFolder(folder.id)}
+            >
+              {expandedFolders.has(folder.id) ? (
+                <ChevronDown className="w-4 h-4 text-gray-600" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-gray-600" />
+              )}
+              <Folder className="w-4 h-4 text-yellow-600" />
+              <span className="text-sm font-medium text-gray-700">
+                {folder.name}
+              </span>
+              <span className="text-xs text-gray-500">
+                ({folder.files.length} files)
+              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const allChecked = folder.files.every((f) =>
+                    selectedFiles.has(f.id),
+                  );
+                  selectAllInFolder(folder.files, !allChecked);
+                }}
+                className="ml-auto text-xs text-blue-600 hover:text-blue-700"
+              >
+                {folder.files.every((f) => selectedFiles.has(f.id))
+                  ? "Deselect All"
+                  : "Select All"}
+              </button>
+            </div>
+
+            {expandedFolders.has(folder.id) && (
+              <div className="ml-6 space-y-1 mt-1">
+                {folder.files.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center gap-2 py-1 px-2 hover:bg-gray-50 rounded"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedFiles.has(file.id)}
+                      onChange={() => toggleFile(file.id)}
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                    />
+                    <FileText className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm text-gray-700 flex-1">
+                      {file.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const MinuteAnalysisAllInOne: React.FC = () => {
   // State management
   const [files, setFiles] = useState<FileAnalysis[]>([]);
@@ -211,6 +470,15 @@ const MinuteAnalysisAllInOne: React.FC = () => {
   const [exportProgress, setExportProgress] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Google Drive state
+  const [showDrivePicker, setShowDrivePicker] = useState(false);
+  const [driveData, setDriveData] = useState<GoogleDriveData | null>(null);
+  const [isLoadingDrive, setIsLoadingDrive] = useState(false);
+
+  // Your Apps Script URL
+  const APPS_SCRIPT_URL =
+    "https://script.google.com/macros/s/AKfycbz9khyBjTjf79WNHN6lo1N2BzjasBnu_vyC8auisy4mctlPRuIpO6uaDTIeo2-e0P6_/exec";
+
   // Get current analysis based on selected date
   const currentAnalysis = useMemo(() => {
     if (!selectedDate) return null;
@@ -221,7 +489,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
   const availableDates = useMemo<DateOption[]>(() => {
     const dates: DateOption[] = [];
     analyses.forEach((analysis, date) => {
-      // Extract short file names for display
       const ceShortName =
         analysis.ceFileName.length > 30
           ? analysis.ceFileName.substring(0, 20) + "..."
@@ -233,14 +500,15 @@ const MinuteAnalysisAllInOne: React.FC = () => {
 
       dates.push({
         date,
-        display: `${date} | CE:${analysis.ceStrikePrice} (${ceShortName}) vs PE:${analysis.peStrikePrice} (${peShortName})`,
+        // display: `${date} | CE:${analysis.ceStrikePrice} (${ceShortName}) vs PE:${analysis.peStrikePrice} (${peShortName})`,
+        display: `${date} |  ${ceShortName?.split("_")?.[1]} vs ${peShortName?.split("_")?.[1]}`,
         ceFile: analysis.ceFileName,
         peFile: analysis.peFileName,
         ceStrike: analysis.ceStrikePrice,
         peStrike: analysis.peStrikePrice,
       });
     });
-    return dates.sort((a, b) => b.date.localeCompare(a.date)); // Sort descending by date
+    return dates.sort((a, b) => b.date.localeCompare(a.date));
   }, [analyses]);
 
   // Parse CSV content with option type detection
@@ -275,7 +543,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
       let strikePrice: number | undefined;
       const strikeMatch = fileName.match(/(\d+)/g);
       if (strikeMatch && strikeMatch.length > 0) {
-        // Find the most likely strike price (usually 5 digits)
         const possibleStrikes = strikeMatch
           .map(Number)
           .filter((n) => n > 1000 && n < 100000);
@@ -304,7 +571,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
       );
       const timeIndex = headers.findIndex((h) => h === "time");
 
-      // Store previous close for return calculation
       let prevClose: number | null = null;
 
       for (let i = 1; i < lines.length; i++) {
@@ -327,7 +593,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
         let dateStr = "";
         let timeStr = "09:15";
 
-        // Parse date and time
         if (dateIndex >= 0) {
           const dateValue = getValue(dateIndex, "");
           if (dateValue) {
@@ -361,13 +626,11 @@ const MinuteAnalysisAllInOne: React.FC = () => {
 
           const candleSize = high - low;
 
-          // Calculate VWAP
           cumulativeVolume += volume;
           cumulativeValue += ((open + high + low + close) / 4) * volume;
           const vwap =
             cumulativeVolume > 0 ? cumulativeValue / cumulativeVolume : close;
 
-          // Calculate return percentage
           let returnPercent = 0;
           if (prevClose !== null && prevClose !== 0) {
             returnPercent = ((close - prevClose) / prevClose) * 100;
@@ -534,7 +797,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
 
       if (ceCandles.length === 0 || peCandles.length === 0) return null;
 
-      // Group candles by minute for both CE and PE
       const ceByMinute = new Map<string, CandleData>();
       const peByMinute = new Map<string, CandleData>();
 
@@ -546,7 +808,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
         peByMinute.set(candle.time, candle);
       });
 
-      // Get all unique minutes from both datasets
       const allMinutes = new Set([...ceByMinute.keys(), ...peByMinute.keys()]);
       const sortedMinutes = Array.from(allMinutes).sort();
 
@@ -581,10 +842,8 @@ const MinuteAnalysisAllInOne: React.FC = () => {
         const ceCandle = ceByMinute.get(time);
         const peCandle = peByMinute.get(time);
 
-        // Skip if both are missing
         if (!ceCandle && !peCandle) return;
 
-        // Create default candles for missing data
         const defaultCandle: CandleData = {
           date,
           time,
@@ -606,11 +865,9 @@ const MinuteAnalysisAllInOne: React.FC = () => {
         const ceData = ceCandle || { ...defaultCandle, optionType: "CE" };
         const peData = peCandle || { ...defaultCandle, optionType: "PE" };
 
-        // Calculate volume to OI ratios
         const ceVolumeToOIRatio = ceData.oi > 0 ? ceData.volume / ceData.oi : 0;
         const peVolumeToOIRatio = peData.oi > 0 ? peData.volume / peData.oi : 0;
 
-        // Calculate comparisons
         const volumeDifference = ceData.volume - peData.volume;
         const volumeRatio =
           peData.volume > 0
@@ -627,7 +884,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
         const bodySizeDifference =
           (ceData.bodySize || 0) - (peData.bodySize || 0);
 
-        // Determine candle comparison
         let candleComparison: string;
         if (
           ceData.candleType === "Bullish" &&
@@ -668,10 +924,8 @@ const MinuteAnalysisAllInOne: React.FC = () => {
           candleComparison = "Mixed";
         }
 
-        // Determine if CE performed better (higher return)
         const ceWon = ceData.returnPercent > peData.returnPercent;
 
-        // Determine if both moved in same direction
         const sameDirection =
           (ceData.returnPercent > 0 && peData.returnPercent > 0) ||
           (ceData.returnPercent < 0 && peData.returnPercent < 0) ||
@@ -721,7 +975,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
 
         minuteComparisons.push(comparison);
 
-        // Aggregate statistics
         ceTotalVolume += ceData.volume;
         peTotalVolume += peData.volume;
         ceTotalOI += ceData.oi;
@@ -753,7 +1006,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
         ceReturnSum += ceData.returnPercent;
         peReturnSum += peData.returnPercent;
 
-        // Track best minutes
         if (
           !bestCEMinute ||
           ceData.returnPercent >
@@ -829,7 +1081,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
 
   const processFiles = useCallback(
     (allFiles: FileAnalysis[]) => {
-      // Group files by date
       const fileGroups: { [key: string]: FileAnalysis[] } = {};
 
       allFiles.forEach((file) => {
@@ -844,7 +1095,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
 
       const newAnalyses = new Map<string, CEPE_MinuteAnalysis>();
 
-      // Find all dates with both CE and PE files
       for (const [date, dateFiles] of Object.entries(fileGroups)) {
         const ceFile = dateFiles.find((f) => f.data[0]?.optionType === "CE");
         const peFile = dateFiles.find((f) => f.data[0]?.optionType === "PE");
@@ -859,7 +1109,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
 
       setAnalyses(newAnalyses);
 
-      // Set selected date to the most recent one
       if (newAnalyses.size > 0) {
         const dates = Array.from(newAnalyses.keys()).sort();
         setSelectedDate(dates[dates.length - 1]);
@@ -920,6 +1169,48 @@ const MinuteAnalysisAllInOne: React.FC = () => {
       extractFirstHourData,
       processFiles,
     ],
+  );
+
+  // Google Drive functions
+  const fetchGoogleDriveStructure = useCallback(async () => {
+    setIsLoadingDrive(true);
+    try {
+      const response = await fetch(APPS_SCRIPT_URL);
+      const data = await response.json();
+
+      if (data.success) {
+        setDriveData(data);
+        setShowDrivePicker(true);
+      } else {
+        alert(
+          "Failed to load Google Drive files: " +
+            (data.error || "Unknown error"),
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching from Google Drive:", error);
+      alert(
+        "Failed to connect to Google Drive. Please check your Apps Script URL.",
+      );
+    } finally {
+      setIsLoadingDrive(false);
+    }
+  }, []);
+
+  const handleGoogleDriveFiles = useCallback(
+    async (files: { content: string; name: string }[]) => {
+      setIsProcessing(true);
+      const fileObjects = files.map(
+        (f) =>
+          new File([f.content], f.name.split("/").pop() || f.name, {
+            type: "text/csv",
+          }),
+      );
+      await handleFileUpload(fileObjects);
+      setShowDrivePicker(false);
+      setDriveData(null);
+    },
+    [handleFileUpload],
   );
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -1016,7 +1307,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
 
     if (relevantMinutes.length === 0) return null;
 
-    // Get first minute for start prices
     const firstMinute = relevantMinutes[0];
     const lastMinute = relevantMinutes[relevantMinutes.length - 1];
 
@@ -1045,12 +1335,9 @@ const MinuteAnalysisAllInOne: React.FC = () => {
     const cePriceChange = ((ceEndPrice - ceStartPrice) / ceStartPrice) * 100;
     const pePriceChange = ((peEndPrice - peStartPrice) / peStartPrice) * 100;
 
-    // Modified to never show "Equal" - always pick CE or PE (default to CE if exactly equal)
     const volumeLeader = ceCumulativeVolume >= peCumulativeVolume ? "CE" : "PE";
-
     const oiLeader = ceCumulativeOI >= peCumulativeOI ? "CE" : "PE";
-
-    const priceLeader = cePriceChange >= pePriceChange ? "CE" : "PE"; // Fixed: now correctly compares CE vs PE
+    const priceLeader = cePriceChange >= pePriceChange ? "CE" : "PE";
 
     return {
       timeRange: `${startTime} - ${endTime}`,
@@ -1100,19 +1387,17 @@ const MinuteAnalysisAllInOne: React.FC = () => {
     let peMaxTime: string | null = null;
 
     minutesFrom930.forEach((comp, index) => {
-      // CE 30-point check (price increase)
       const cePoints = comp.ceData.close - ceStartPrice;
       if (!ceReached && cePoints >= targetPoints) {
         ceReached = true;
         ceReachedAtTime = comp.time;
-        ceMinutesToReach = index + 1; // Minutes from 9:30
+        ceMinutesToReach = index + 1;
       }
       if (cePoints > ceMaxPoints) {
         ceMaxPoints = cePoints;
         ceMaxTime = comp.time;
       }
 
-      // PE 30-point check (price increase for PE)
       const pePoints = comp.peData.close - peStartPrice;
       if (!peReached && pePoints >= targetPoints) {
         peReached = true;
@@ -1308,7 +1593,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
 
     const wb = XLSX.utils.book_new();
 
-    // Summary sheet
     const summaryData: (string | number)[][] = [
       [
         "Date",
@@ -1376,7 +1660,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
 
-    // Minute-by-minute data
     const minuteData = currentAnalysis.minuteComparisons.map((comp) => [
       comp.time,
       comp.minuteNumber,
@@ -1469,7 +1752,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
               </p>
             </header>
 
-            {/* Upload Section - Always Visible */}
+            {/* Upload Section */}
             <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
@@ -1484,6 +1767,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                 </p>
               </div>
 
+              {/* Local Upload Area */}
               <div
                 className={`relative border-3 border-dashed rounded-2xl p-8 text-center transition-all mb-6 ${
                   dragActive
@@ -1494,7 +1778,11 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
-                onClick={() => !isProcessing && fileInputRef.current?.click()}
+                onClick={() =>
+                  !isProcessing &&
+                  !showDrivePicker &&
+                  fileInputRef.current?.click()
+                }
               >
                 <input
                   ref={fileInputRef}
@@ -1535,7 +1823,65 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                 )}
               </div>
 
-              <div className="bg-gray-50 rounded-xl p-4 mb-6">
+              {/* Google Drive Section */}
+              <div className="mt-6">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-4 bg-white text-gray-500">
+                      Or load from Google Drive
+                    </span>
+                  </div>
+                </div>
+
+                {!showDrivePicker ? (
+                  <div className="mt-6 text-center">
+                    <button
+                      onClick={fetchGoogleDriveStructure}
+                      disabled={isLoadingDrive || isProcessing}
+                      className="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoadingDrive ? (
+                        <>
+                          <Loader className="w-5 h-5 mr-2 animate-spin" />
+                          Loading Drive...
+                        </>
+                      ) : (
+                        <>
+                          <FolderOpen className="w-5 h-5 mr-2" />
+                          Browse Google Drive Folder
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-6">
+                    {driveData && (
+                      <>
+                        <FolderTree
+                          data={driveData}
+                          onSelectFiles={handleGoogleDriveFiles}
+                          isProcessing={isProcessing}
+                        />
+                        <button
+                          onClick={() => {
+                            setShowDrivePicker(false);
+                            setDriveData(null);
+                          }}
+                          className="mt-4 text-sm text-gray-600 hover:text-gray-800"
+                        >
+                          ← Back to upload options
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* File Naming Requirements */}
+              <div className="bg-gray-50 rounded-xl p-4 mt-6">
                 <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-blue-600" />
                   File Naming Requirements
@@ -1569,132 +1915,33 @@ const MinuteAnalysisAllInOne: React.FC = () => {
             </div>
           </>
         )}
-        {files.length > 0 && (
-          <div className="rounded-4 p-4 bg-white">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">
-                Uploaded Files ({files.length})
-              </h3>
-              <button
-                onClick={clearAllFiles}
-                className="text-sm text-red-600 hover:text-red-700 flex items-center gap-1"
-              >
-                <X className="w-4 h-4" />
-                Clear All
-              </button>
-            </div>
-
-            <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2">
-              {files.map((file) => (
-                <div
-                  key={file.id}
-                  className={`flex items-center justify-between p-3 rounded-lg border ${
-                    selectedFiles.has(file.id)
-                      ? "border-blue-300 bg-blue-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => toggleFileSelection(file.id)}
-                      className={`w-5 h-5 rounded border flex items-center justify-center ${
-                        selectedFiles.has(file.id)
-                          ? "bg-blue-600 border-blue-600"
-                          : "bg-white border-gray-300"
-                      }`}
-                    >
-                      {selectedFiles.has(file.id) && (
-                        <Check className="w-3 h-3 text-white" />
-                      )}
-                    </button>
-
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-gray-500" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {file.name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {file.data[0]?.date} • {file.data.length} candles •
-                          First hour: {file.firstHourData.length}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    {file.data[0]?.optionType && (
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          file.data[0].optionType === "CE"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {file.data[0].optionType}{" "}
-                        {file.data[0]?.strikePrice || ""}
-                      </span>
-                    )}
-                    <button
-                      onClick={() => removeFile(file.id)}
-                      className="text-gray-400 hover:text-red-500"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {/* Date Selection Dropdown */}
-        {availableDates.length > 0 && (
-          <div className="bg-white rounded-xl shadow-lg p-4 mb-6">
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex items-center gap-2">
-                <CalendarIcon className="w-5 h-5 text-gray-500" />
-                <span className="font-medium text-gray-700">
-                  Select Comparison:
-                </span>
-              </div>
-              <select
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="flex-1 min-w-[400px] px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                {availableDates.map((option) => (
-                  <option key={option.date} value={option.date}>
-                    {option.display}
-                  </option>
-                ))}
-              </select>
-              <div className="text-sm text-gray-500">
-                {availableDates.length} comparison
-                {availableDates.length > 1 ? "s" : ""} available
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Analysis Section - Shows only when a date is selected */}
         {currentAnalysis && (
           <div className="space-y-6">
             {/* Table Header with File Names */}
-            <div className="bg-white rounded-xl shadow-lg p-4 border-l-4 border-blue-500">
+            <div className="bg-white rounded-xl shadow-lg p-4 border-l-4 border-blue-500 sticky top-0 z-50">
               <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">
-                      {currentAnalysis.date} - CE vs PE Analysis
-                    </h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Strike Price: CE {currentAnalysis.ceStrikePrice} | PE{" "}
-                      {currentAnalysis.peStrikePrice}
-                    </p>
-                  </div>
+                <div className="flex-1 flex items-center gap-3">
+                  {availableDates.length > 0 && (
+                    <div>
+                      <select
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        {availableDates.map((option) => (
+                          <option key={option.date} value={option.date}>
+                            {option.display}
+                          </option>
+                        ))}
+                      </select>
+                      {/* <div className="text-sm text-gray-500">
+                        {availableDates.length} comparison
+                        {availableDates.length > 1 ? "s" : ""} available
+                      </div> */}
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-4 text-sm">
                   <div className="bg-blue-50 px-4 py-2 rounded-lg">
@@ -1714,7 +1961,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
             </div>
 
             {/* Export Buttons */}
-            <div className="bg-white rounded-xl shadow-lg p-4 flex flex-wrap gap-3 justify-end">
+            <div className="bg-white rounded-xl shadow-lg p-4 flex flex-wrap gap-3 justify-end !hidden">
               <button
                 onClick={exportMinuteAnalysisCSV}
                 disabled={exportProgress > 0}
@@ -2344,115 +2591,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
               </div>
             </div>
 
-            {/* Best Performers */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {currentAnalysis.summary.bestCEMinute && (
-                <div className="border border-green-200 bg-green-50 rounded-xl p-4">
-                  <h4 className="text-sm font-medium text-green-700 mb-2">
-                    Best CE Minute
-                  </h4>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {currentAnalysis.summary.bestCEMinute.time}
-                  </div>
-                  <div className="text-sm text-gray-700 mt-1">
-                    Return:{" "}
-                    <span className="font-semibold text-green-600">
-                      +
-                      {currentAnalysis.summary.bestCEMinute.ceData.returnPercent.toFixed(
-                        2,
-                      )}
-                      %
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-600 mt-1">
-                    Volume:{" "}
-                    {formatCompactNumber(
-                      currentAnalysis.summary.bestCEMinute.ceData.volume,
-                    )}{" "}
-                    | Vol/OI:{" "}
-                    {formatRatio(
-                      currentAnalysis.summary.bestCEMinute.ceData
-                        .volumeToOIRatio,
-                    )}
-                  </div>
-                </div>
-              )}
-              {currentAnalysis.summary.bestPEMinute && (
-                <div className="border border-red-200 bg-red-50 rounded-xl p-4">
-                  <h4 className="text-sm font-medium text-red-700 mb-2">
-                    Best PE Minute
-                  </h4>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {currentAnalysis.summary.bestPEMinute.time}
-                  </div>
-                  <div className="text-sm text-gray-700 mt-1">
-                    Return:{" "}
-                    <span
-                      className={`font-semibold ${
-                        currentAnalysis.summary.bestPEMinute.peData
-                          .returnPercent >= 0
-                          ? "text-green-600"
-                          : "text-red-600"
-                      }`}
-                    >
-                      {currentAnalysis.summary.bestPEMinute.peData
-                        .returnPercent >= 0
-                        ? "+"
-                        : ""}
-                      {currentAnalysis.summary.bestPEMinute.peData.returnPercent.toFixed(
-                        2,
-                      )}
-                      %
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-600 mt-1">
-                    Volume:{" "}
-                    {formatCompactNumber(
-                      currentAnalysis.summary.bestPEMinute.peData.volume,
-                    )}{" "}
-                    | Vol/OI:{" "}
-                    {formatRatio(
-                      currentAnalysis.summary.bestPEMinute.peData
-                        .volumeToOIRatio,
-                    )}
-                  </div>
-                </div>
-              )}
-              {currentAnalysis.summary.highestVolumeMinute && (
-                <div className="border border-purple-200 bg-purple-50 rounded-xl p-4">
-                  <h4 className="text-sm font-medium text-purple-700 mb-2">
-                    Highest Volume Minute
-                  </h4>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {currentAnalysis.summary.highestVolumeMinute.time}
-                  </div>
-                  <div className="text-sm text-gray-700 mt-1">
-                    CE Vol:{" "}
-                    {formatCompactNumber(
-                      currentAnalysis.summary.highestVolumeMinute.ceData.volume,
-                    )}{" "}
-                    | PE Vol:{" "}
-                    {formatCompactNumber(
-                      currentAnalysis.summary.highestVolumeMinute.peData.volume,
-                    )}
-                  </div>
-                  <div className="text-xs text-gray-600 mt-1">
-                    CE Vol/OI:{" "}
-                    {formatRatio(
-                      currentAnalysis.summary.highestVolumeMinute.ceData
-                        .volumeToOIRatio,
-                    )}{" "}
-                    | PE Vol/OI:{" "}
-                    {formatRatio(
-                      currentAnalysis.summary.highestVolumeMinute.peData
-                        .volumeToOIRatio,
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Minute-by-Minute Table with Volume/OI Ratio */}
+            {/* Minute-by-Minute Table */}
             <div className="bg-white rounded-2xl shadow-xl p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Minute-by-Minute Comparison (Full 60 Minutes: 9:15-10:15)
@@ -2482,7 +2621,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                     </tr>
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50"></th>
-                      {/* CE headers */}
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50">
                         OHLC
                       </th>
@@ -2501,7 +2639,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 border-r bg-gray-50">
                         Return
                       </th>
-                      {/* PE headers */}
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 bg-gray-50">
                         OHLC
                       </th>
@@ -2534,7 +2671,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                         <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                           {comp.time}
                         </td>
-                        {/* CE Data */}
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="text-xs">
                             <span className="font-medium">
@@ -2592,7 +2728,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                             {comp.ceData.returnPercent.toFixed(2)}%
                           </span>
                         </td>
-                        {/* PE Data */}
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="text-xs">
                             <span className="font-medium">
@@ -2650,7 +2785,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                             {comp.peData.returnPercent.toFixed(2)}%
                           </span>
                         </td>
-                        {/* Comparison */}
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="space-y-1">
                             <span
