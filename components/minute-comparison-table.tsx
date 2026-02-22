@@ -1797,7 +1797,7 @@
 //                 {isProcessing ? (
 //                   <div className="flex flex-col items-center">
 //                     <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-//                     <p className="text-lg font-medium text-gray-700 mb-2">
+//                     <p className="text-sm font-medium text-gray-700 mb-2">
 //                       Processing Files...
 //                     </p>
 //                     <p className="text-gray-600">
@@ -1807,7 +1807,7 @@
 //                 ) : (
 //                   <>
 //                     <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-//                     <p className="text-lg font-semibold text-gray-900 mb-2">
+//                     <p className="text-sm font-semibold text-gray-900 mb-2">
 //                       Drag & drop CSV files here
 //                     </p>
 //                     <p className="text-gray-600 mb-4">
@@ -2026,7 +2026,7 @@
 //             {/* 9:15-9:27 Cumulative Card */}
 //             {activeCard === "cumulative" && cumulativeData && (
 //               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
-//                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+//                 <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
 //                   <Clock className="w-5 h-5 text-blue-600" />
 //                   First 12 Minutes Analysis (9:15 - 9:27)
 //                 </h3>
@@ -2218,7 +2218,7 @@
 //             {/* 30-Point Analysis Card */}
 //             {activeCard === "thirtyPoint" && thirtyPointAnalysis && (
 //               <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
-//                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+//                 <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
 //                   <Target className="w-5 h-5 text-purple-600" />
 //                   30-Point Movement Analysis (from 9:30 AM)
 //                 </h3>
@@ -2227,7 +2227,7 @@
 //                   {/* CE Analysis */}
 //                   <div className="bg-white rounded-lg p-5 shadow-sm border-l-4 border-blue-500">
 //                     <div className="flex items-center justify-between mb-4">
-//                       <span className="text-lg font-semibold text-blue-700">
+//                       <span className="text-sm font-semibold text-blue-700">
 //                         Call Option (CE) - Strike{" "}
 //                         {currentAnalysis.ceStrikePrice}
 //                       </span>
@@ -2242,7 +2242,7 @@
 //                     <div className="space-y-3">
 //                       <div className="flex justify-between items-center">
 //                         <span className="text-gray-600">Max Points:</span>
-//                         <span className="font-bold text-lg text-blue-600">
+//                         <span className="font-bold text-sm text-blue-600">
 //                           +{thirtyPointAnalysis.ceMaxPoints.toFixed(1)}
 //                         </span>
 //                       </div>
@@ -2284,7 +2284,7 @@
 //                   {/* PE Analysis */}
 //                   <div className="bg-white rounded-lg p-5 shadow-sm border-l-4 border-red-500">
 //                     <div className="flex items-center justify-between mb-4">
-//                       <span className="text-lg font-semibold text-red-700">
+//                       <span className="text-sm font-semibold text-red-700">
 //                         Put Option (PE) - Strike {currentAnalysis.peStrikePrice}
 //                       </span>
 //                       {thirtyPointAnalysis.peReached && (
@@ -2298,7 +2298,7 @@
 //                     <div className="space-y-3">
 //                       <div className="flex justify-between items-center">
 //                         <span className="text-gray-600">Max Points:</span>
-//                         <span className="font-bold text-lg text-red-600">
+//                         <span className="font-bold text-sm text-red-600">
 //                           +{thirtyPointAnalysis.peMaxPoints.toFixed(1)}
 //                         </span>
 //                       </div>
@@ -2345,7 +2345,7 @@
 //                           First to reach 30 points:
 //                         </span>
 //                         <span
-//                           className={`px-4 py-2 rounded-lg font-bold text-lg ${
+//                           className={`px-4 py-2 rounded-lg font-bold text-sm ${
 //                             thirtyPointAnalysis.firstToReach === "CE"
 //                               ? "bg-blue-600 text-white"
 //                               : "bg-red-600 text-white"
@@ -2593,7 +2593,7 @@
 
 //             {/* Minute-by-Minute Table */}
 //             <div className="bg-white rounded-2xl shadow-xl p-6">
-//               <h3 className="text-lg font-semibold text-gray-900 mb-4">
+//               <h3 className="text-sm font-semibold text-gray-900 mb-4">
 //                 Minute-by-Minute Comparison (Full 60 Minutes: 9:15-10:15)
 //               </h3>
 //               <div className="overflow-x-auto rounded-lg border border-gray-200 max-h-[600px] overflow-y-auto">
@@ -6271,7 +6271,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                 {isProcessing ? (
                   <div className="flex flex-col items-center">
                     <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-                    <p className="text-lg font-medium text-gray-700 mb-2">
+                    <p className="text-sm font-medium text-gray-700 mb-2">
                       Processing Files...
                     </p>
                     <p className="text-gray-600">
@@ -6281,7 +6281,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                 ) : (
                   <>
                     <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-lg font-semibold text-gray-900 mb-2">
+                    <p className="text-sm font-semibold text-gray-900 mb-2">
                       Drag & drop CSV files here
                     </p>
                     <p className="text-gray-600 mb-4">
@@ -6573,13 +6573,13 @@ const MinuteAnalysisAllInOne: React.FC = () => {
 
             {/* 9:15-9:27 Cumulative Card */}
             {activeCard === "cumulative" && cumulativeData && (
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-3 border border-blue-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Clock className="w-5 h-5 text-blue-600" />
                   First 12 Minutes Analysis (9:15 - 9:27)
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {/* Volume Comparison */}
                   <div className="bg-white rounded-lg p-4 shadow-sm">
                     <div className="text-sm font-medium text-gray-600 mb-3 flex items-center gap-2">
@@ -6773,7 +6773,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
             {/* 30-Point Analysis Card */}
             {activeCard === "thirtyPoint" && thirtyPointAnalysis && (
               <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Target className="w-5 h-5 text-purple-600" />
                   30-Point Movement Analysis (from 9:30 AM)
                 </h3>
@@ -6782,7 +6782,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                   {/* CE Analysis */}
                   <div className="bg-white rounded-lg p-5 shadow-sm border-l-4 border-blue-500">
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-lg font-semibold text-blue-700">
+                      <span className="text-sm font-semibold text-blue-700">
                         Call Option (CE) - Strike{" "}
                         {currentAnalysis.ceStrikePrice}
                       </span>
@@ -6797,7 +6797,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-gray-600">Max Points:</span>
-                        <span className="font-bold text-lg text-blue-600">
+                        <span className="font-bold text-sm text-blue-600">
                           +{thirtyPointAnalysis.ceMaxPoints.toFixed(1)}
                         </span>
                       </div>
@@ -6839,7 +6839,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                   {/* PE Analysis */}
                   <div className="bg-white rounded-lg p-5 shadow-sm border-l-4 border-red-500">
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-lg font-semibold text-red-700">
+                      <span className="text-sm font-semibold text-red-700">
                         Put Option (PE) - Strike {currentAnalysis.peStrikePrice}
                       </span>
                       {thirtyPointAnalysis.peReached && (
@@ -6853,7 +6853,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-gray-600">Max Points:</span>
-                        <span className="font-bold text-lg text-red-600">
+                        <span className="font-bold text-sm text-red-600">
                           +{thirtyPointAnalysis.peMaxPoints.toFixed(1)}
                         </span>
                       </div>
@@ -6900,7 +6900,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                           First to reach 30 points:
                         </span>
                         <span
-                          className={`px-4 py-2 rounded-lg font-bold text-lg ${
+                          className={`px-4 py-2 rounded-lg font-bold text-sm ${
                             thirtyPointAnalysis.firstToReach === "CE"
                               ? "bg-blue-600 text-white"
                               : "bg-red-600 text-white"
@@ -6932,7 +6932,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
             )}
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="hidden md:grid grid-cols-1 md:grid-cols-4 gap-4 ">
               <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
                 <div className="text-sm text-blue-600 font-medium mb-1">
                   CE Performance
@@ -7013,7 +7013,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
             </div>
 
             {/* Volume, OI & Ratio Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="hidden md:grid grid-cols-1 md:grid-cols-3 gap-4 ">
               <div className="bg-gray-50 rounded-xl p-4">
                 <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <BarChart3 className="w-4 h-4" />
@@ -7148,7 +7148,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
 
             {/* Minute-by-Minute Table */}
             <div className="bg-white rounded-2xl shadow-xl p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">
                 Minute-by-Minute Comparison (Full 60 Minutes: 9:15-10:15)
               </h3>
               <div className="overflow-x-auto rounded-lg border border-gray-200 max-h-[600px] overflow-y-auto">
