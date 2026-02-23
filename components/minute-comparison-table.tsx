@@ -6390,7 +6390,8 @@ const MinuteAnalysisAllInOne: React.FC = () => {
   const oiDirectionData = useMemo(() => {
     if (!currentAnalysis || !cumulativeData) return null;
     const startTime = "09:15",
-      endTime = "09:27";
+      // endTime = "09:27";
+      endTime = "15:30";
     const relevantMinutes = currentAnalysis.minuteComparisons.filter(
       (comp) => comp.time >= startTime && comp.time <= endTime,
     );
@@ -6554,7 +6555,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
     if (!currentAnalysis) return null;
 
     const OBS_START = "09:15",
-      OBS_END = "09:27";
+      OBS_END = "15:30";
     const EXEC_START = "09:30",
       EXEC_END = "10:15";
     const TARGET_PTS = 30;
