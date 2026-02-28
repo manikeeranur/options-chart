@@ -827,7 +827,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
   const APPS_SCRIPT_URL_Zerodha =
     "https://script.google.com/macros/s/AKfycbw50LvPAL1wNdu2KdBAlHQbh5myg7cW6xMibrB83Sp1YjLZ1_XPL6SEueOz5PTT_ktRcg/exec";
   const APPS_SCRIPT_URL_Upstox =
-    "https://script.google.com/macros/s/AKfycbyMo8jk7E4twIMfAfyzFdqs5h0Nfe-01IJ4r8aeRVPu47uvrra2goU-a9lofKQZy_C8/exec";
+    "https://script.google.com/macros/s/AKfycbyIZPYFykqqwWijehPczLVxtcSv2S5aD5s0rhVT9rDW1YQGtvr97a8Fzogq9_PomG4T/exec";
 
   const currentAnalysis = useMemo(() => {
     if (!selectedDate) return null;
