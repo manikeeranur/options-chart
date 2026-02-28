@@ -771,6 +771,12 @@ const MinuteAnalysisAllInOne: React.FC = () => {
     "candlestick",
   );
   const [timeframe, setTimeframe] = useState("1min");
+
+  const driveOptions = [
+    { label: "Upstox Drive", value: "upstox" },
+    { label: "Zerodha Drive", value: "zerodha" },
+  ];
+  const [drive, setDrive] = useState("upstox");
   const [syncCharts, setSyncCharts] = useState(true);
   const [ceHoverData, setCeHoverData] = useState<any>(null);
   const [peHoverData, setPeHoverData] = useState<any>(null);
@@ -818,7 +824,9 @@ const MinuteAnalysisAllInOne: React.FC = () => {
     results: null,
   });
 
-  const APPS_SCRIPT_URL =
+  const APPS_SCRIPT_URL_Zerodha =
+    "https://script.google.com/macros/s/AKfycbw50LvPAL1wNdu2KdBAlHQbh5myg7cW6xMibrB83Sp1YjLZ1_XPL6SEueOz5PTT_ktRcg/exec";
+  const APPS_SCRIPT_URL_Upstox =
     "https://script.google.com/macros/s/AKfycbyMo8jk7E4twIMfAfyzFdqs5h0Nfe-01IJ4r8aeRVPu47uvrra2goU-a9lofKQZy_C8/exec";
 
   const currentAnalysis = useMemo(() => {
@@ -1563,10 +1571,13 @@ const MinuteAnalysisAllInOne: React.FC = () => {
     ],
   );
 
-  const fetchGoogleDriveStructure = useCallback(async () => {
+  const fetchGoogleDriveStructure = useCallback(async (broker: string) => {
     setIsLoadingDrive(true);
     try {
-      const response = await fetch(APPS_SCRIPT_URL);
+      const response = await fetch(
+        broker === "upstox" ? APPS_SCRIPT_URL_Upstox : APPS_SCRIPT_URL_Zerodha,
+      );
+
       const data = await response.json();
       if (data.success) {
         setDriveData(data);
@@ -3015,19 +3026,45 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                   </span>
                 </div>
               </div>
+              <div className="flex border border-gray-200 rounded-lg overflow-hidden mb-5">
+                {driveOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setDrive(opt.value)}
+                    className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${drive === opt.value ? "bg-indigo-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
               {!showDrivePicker ? (
-                <button
-                  onClick={fetchGoogleDriveStructure}
-                  disabled={isLoadingDrive}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition-colors disabled:opacity-50"
-                >
-                  {isLoadingDrive ? (
-                    <Loader className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <FolderOpen className="w-4 h-4" />
-                  )}
-                  {isLoadingDrive ? "Loading…" : "Browse Google Drive"}
-                </button>
+                <>
+                  <button
+                    onClick={() =>
+                      fetchGoogleDriveStructure(
+                        drive === "upstox" ? "upstox" : "zerodha",
+                      )
+                    }
+                    disabled={isLoadingDrive}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition-colors disabled:opacity-50"
+                  >
+                    {isLoadingDrive ? (
+                      <Loader className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FolderOpen className="w-4 h-4" />
+                    )}
+                    {isLoadingDrive ? (
+                      "Loading…"
+                    ) : (
+                      <>
+                        {" "}
+                        {drive === "upstox"
+                          ? "Browse Google Upstox Drive"
+                          : "Browse Google Zerodha Drive"}
+                      </>
+                    )}
+                  </button>
+                </>
               ) : (
                 <div>
                   {driveData && (
