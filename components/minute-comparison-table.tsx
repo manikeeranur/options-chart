@@ -819,7 +819,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
   });
 
   const APPS_SCRIPT_URL =
-    "https://script.google.com/macros/s/AKfycbz9khyBjTjf79WNHN6lo1N2BzjasBnu_vyC8auisy4mctlPRuIpO6uaDTIeo2-e0P6_/exec";
+    "https://script.google.com/macros/s/AKfycbyMo8jk7E4twIMfAfyzFdqs5h0Nfe-01IJ4r8aeRVPu47uvrra2goU-a9lofKQZy_C8/exec";
 
   const currentAnalysis = useMemo(() => {
     if (!selectedDate) return null;
