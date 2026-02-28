@@ -3177,12 +3177,12 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                   icon: <Layers className="w-3.5 h-3.5" />,
                   activeCls: "bg-amber-500 text-white shadow-md",
                 },
-                {
-                  id: "thirtyPoint",
-                  label: "30-Pt from 9:30",
-                  icon: <Award className="w-3.5 h-3.5" />,
-                  activeCls: "bg-violet-600 text-white shadow-md",
-                },
+                // {
+                //   id: "thirtyPoint",
+                //   label: "30-Pt from 9:30",
+                //   icon: <Award className="w-3.5 h-3.5" />,
+                //   activeCls: "bg-violet-600 text-white shadow-md",
+                // },
               ] as const
             ).map((tab) => (
               <button
@@ -3366,6 +3366,129 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                     </span>
                   </div>
                 </div>
+              </div>
+              {/* 30-Point Card */}
+
+              <div className="bg-white rounded-2xl shadow-md p-4 mb-4 border border-violet-100 mt-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <Target className="w-4 h-4 text-violet-500" />
+                  <h3 className="font-bold text-gray-800 text-sm">
+                    30-Point Analysis{" "}
+                    <span className="text-violet-400 font-normal">
+                      from 9:30 AM
+                    </span>
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                  {[
+                    {
+                      key: "CE",
+                      reached: thirtyPointAnalysis.ceReached,
+                      reachedAt: thirtyPointAnalysis.ceReachedAtTime,
+                      minutesToReach: thirtyPointAnalysis.ceMinutesToReach,
+                      maxPoints: thirtyPointAnalysis.ceMaxPoints,
+                      maxTime: thirtyPointAnalysis.ceMaxTime,
+                      strike: currentAnalysis.ceFileName?.split("_")?.[1],
+                      color: "indigo",
+                    },
+                    {
+                      key: "PE",
+                      reached: thirtyPointAnalysis.peReached,
+                      reachedAt: thirtyPointAnalysis.peReachedAtTime,
+                      minutesToReach: thirtyPointAnalysis.peMinutesToReach,
+                      maxPoints: thirtyPointAnalysis.peMaxPoints,
+                      maxTime: thirtyPointAnalysis.peMaxTime,
+                      strike: currentAnalysis.peFileName?.split("_")?.[1],
+                      color: "rose",
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.key}
+                      className={`rounded-xl p-4 border-l-4 ${item.key === "CE" ? "border-indigo-500 bg-indigo-50/50" : "border-rose-500 bg-rose-50/50"}`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span
+                          className={`font-bold text-sm ${item.key === "CE" ? "text-indigo-700" : "text-rose-700"}`}
+                        >
+                          {item.strike}
+                        </span>
+                        {item.reached && (
+                          <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-semibold">
+                            ✓ Reached
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Max Points</span>
+                          <span
+                            className={`font-mono font-bold ${item.key === "CE" ? "text-indigo-600" : "text-rose-600"}`}
+                          >
+                            +{item.maxPoints.toFixed(1)}
+                          </span>
+                        </div>
+                        {item.reached ? (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Reached at</span>
+                              <span className="font-semibold">
+                                {item.reachedAt}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">
+                                Minutes taken
+                              </span>
+                              <span className="font-semibold text-violet-600">
+                                {item.minutesToReach} min
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Status</span>
+                            <span className="font-semibold text-amber-600">
+                              Not reached
+                            </span>
+                          </div>
+                        )}
+                        {item.maxTime && (
+                          <div className="text-[10px] text-gray-400">
+                            Peak at {item.maxTime}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {thirtyPointAnalysis.firstToReach && (
+                  <div
+                    className={`rounded-xl p-3 text-center ${thirtyPointAnalysis.firstToReach === "CE" ? "bg-indigo-50 border border-indigo-200" : "bg-rose-50 border border-rose-200"}`}
+                  >
+                    <span className="text-sm text-gray-600">
+                      First to 30 pts:{" "}
+                    </span>
+                    <span
+                      className={`font-bold text-base ${thirtyPointAnalysis.firstToReach === "CE" ? "text-indigo-600" : "text-rose-600"}`}
+                    >
+                      {thirtyPointAnalysis.firstToReach}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      {" "}
+                      at{" "}
+                      {thirtyPointAnalysis.firstToReach === "CE"
+                        ? thirtyPointAnalysis.ceReachedAtTime
+                        : thirtyPointAnalysis.peReachedAtTime}
+                    </span>
+                  </div>
+                )}
+                {!thirtyPointAnalysis.firstToReach && (
+                  <div className="rounded-xl p-3 text-center bg-gray-50 border border-gray-200">
+                    <span className="text-sm text-gray-500">
+                      Neither reached 30 points by 10:15 AM
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -3958,129 +4081,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                   </span>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* 30-Point Card */}
-          {activeCard === "thirtyPoint" && thirtyPointAnalysis && (
-            <div className="bg-white rounded-2xl shadow-md p-4 mb-4 border border-violet-100">
-              <div className="flex items-center gap-2 mb-4">
-                <Target className="w-4 h-4 text-violet-500" />
-                <h3 className="font-bold text-gray-800 text-sm">
-                  30-Point Analysis{" "}
-                  <span className="text-violet-400 font-normal">
-                    from 9:30 AM
-                  </span>
-                </h3>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                {[
-                  {
-                    key: "CE",
-                    reached: thirtyPointAnalysis.ceReached,
-                    reachedAt: thirtyPointAnalysis.ceReachedAtTime,
-                    minutesToReach: thirtyPointAnalysis.ceMinutesToReach,
-                    maxPoints: thirtyPointAnalysis.ceMaxPoints,
-                    maxTime: thirtyPointAnalysis.ceMaxTime,
-                    strike: currentAnalysis.ceStrikePrice,
-                    color: "indigo",
-                  },
-                  {
-                    key: "PE",
-                    reached: thirtyPointAnalysis.peReached,
-                    reachedAt: thirtyPointAnalysis.peReachedAtTime,
-                    minutesToReach: thirtyPointAnalysis.peMinutesToReach,
-                    maxPoints: thirtyPointAnalysis.peMaxPoints,
-                    maxTime: thirtyPointAnalysis.peMaxTime,
-                    strike: currentAnalysis.peStrikePrice,
-                    color: "rose",
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.key}
-                    className={`rounded-xl p-4 border-l-4 ${item.key === "CE" ? "border-indigo-500 bg-indigo-50/50" : "border-rose-500 bg-rose-50/50"}`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <span
-                        className={`font-bold text-sm ${item.key === "CE" ? "text-indigo-700" : "text-rose-700"}`}
-                      >
-                        {item.key} — Strike {item.strike}
-                      </span>
-                      {item.reached && (
-                        <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-semibold">
-                          ✓ Reached
-                        </span>
-                      )}
-                    </div>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Max Points</span>
-                        <span
-                          className={`font-mono font-bold ${item.key === "CE" ? "text-indigo-600" : "text-rose-600"}`}
-                        >
-                          +{item.maxPoints.toFixed(1)}
-                        </span>
-                      </div>
-                      {item.reached ? (
-                        <>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Reached at</span>
-                            <span className="font-semibold">
-                              {item.reachedAt}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Minutes taken</span>
-                            <span className="font-semibold text-violet-600">
-                              {item.minutesToReach} min
-                            </span>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Status</span>
-                          <span className="font-semibold text-amber-600">
-                            Not reached
-                          </span>
-                        </div>
-                      )}
-                      {item.maxTime && (
-                        <div className="text-[10px] text-gray-400">
-                          Peak at {item.maxTime}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {thirtyPointAnalysis.firstToReach && (
-                <div
-                  className={`rounded-xl p-3 text-center ${thirtyPointAnalysis.firstToReach === "CE" ? "bg-indigo-50 border border-indigo-200" : "bg-rose-50 border border-rose-200"}`}
-                >
-                  <span className="text-sm text-gray-600">
-                    First to 30 pts:{" "}
-                  </span>
-                  <span
-                    className={`font-bold text-base ${thirtyPointAnalysis.firstToReach === "CE" ? "text-indigo-600" : "text-rose-600"}`}
-                  >
-                    {thirtyPointAnalysis.firstToReach}
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    {" "}
-                    at{" "}
-                    {thirtyPointAnalysis.firstToReach === "CE"
-                      ? thirtyPointAnalysis.ceReachedAtTime
-                      : thirtyPointAnalysis.peReachedAtTime}
-                  </span>
-                </div>
-              )}
-              {!thirtyPointAnalysis.firstToReach && (
-                <div className="rounded-xl p-3 text-center bg-gray-50 border border-gray-200">
-                  <span className="text-sm text-gray-500">
-                    Neither reached 30 points by 10:15 AM
-                  </span>
-                </div>
-              )}
             </div>
           )}
 
