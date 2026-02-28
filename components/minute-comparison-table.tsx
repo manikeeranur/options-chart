@@ -31,6 +31,10 @@ import {
   ArrowDown,
   ArrowUp,
   Layers,
+  Zap,
+  Gauge,
+  MoveUpRight,
+  MoveDownRight,
 } from "lucide-react";
 import * as LightweightCharts from "lightweight-charts";
 import {
@@ -496,6 +500,68 @@ interface FileDataStore {
   };
 }
 
+// ==================== NEW ADVANCED ANALYSIS INTERFACES ====================
+
+interface OIVolumeLeaderAnalysis {
+  // 9:15 AM only
+  at915: {
+    leader: "CE" | "PE" | null;
+    ceOIVolRatio: number;
+    peOIVolRatio: number;
+    leaderFileName: string;
+    leaderStrike: number;
+  };
+  // 9:15 AM - 9:24 AM
+  window915To924: {
+    leader: "CE" | "PE" | null;
+    ceAvgOIVolRatio: number;
+    peAvgOIVolRatio: number;
+    leaderFileName: string;
+    leaderStrike: number;
+    consistency: number; // percentage of minutes where leader maintained
+  };
+}
+
+interface PriceMoveAnalysis921To924 {
+  bullishSide: "CE" | "PE" | "Both" | "None" | null;
+  cePriceChange: number;
+  pePriceChange: number;
+  ceStartPrice: number;
+  ceEndPrice: number;
+  peStartPrice: number;
+  peEndPrice: number;
+  ceBullishMinutes: number;
+  peBullishMinutes: number;
+}
+
+interface FiftyPointAnalysis {
+  entryTime: string;
+  entryPriceCE: number;
+  entryPricePE: number;
+  target50: {
+    ceReached: boolean;
+    peReached: boolean;
+    ceReachedTime: string | null;
+    peReachedTime: string | null;
+    ceMinutesToReach: number | null;
+    peMinutesToReach: number | null;
+    firstToReach: "CE" | "PE" | null;
+  };
+  sl20: {
+    ceHit: boolean;
+    peHit: boolean;
+    ceHitTime: string | null;
+    peHitTime: string | null;
+    ceMinutesToHit: number | null;
+    peMinutesToHit: number | null;
+    firstToHit: "CE" | "PE" | null;
+  };
+  ceMaxPoints: number;
+  peMaxPoints: number;
+  ceMaxTime: string | null;
+  peMaxTime: string | null;
+}
+
 // ==================== CALCULATE RESULTS ====================
 const calculateResults = (
   ltp: string,
@@ -746,7 +812,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
   );
   const [activeCard, setActiveCard] = useState<
     "cumulative" | "thirtyPoint" | "oiDirection" | "oiVolSignal"
-  >("oiVolSignal");
+  >("cumulative");
   const [exportProgress, setExportProgress] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -2075,6 +2141,154 @@ const MinuteAnalysisAllInOne: React.FC = () => {
     };
   }, [currentAnalysis]);
 
+  // ==================== NEW ADVANCED ANALYSIS ====================
+
+  // 1. OI/Volume Leader Analysis (9:15 only and 9:15-9:24)
+  const oiVolumeLeaderData = useMemo((): OIVolumeLeaderAnalysis | null => {
+    if (!currentAnalysis) return null;
+
+    const minutes915To924 = currentAnalysis.minuteComparisons.filter(
+      (comp) => comp.time >= "09:15" && comp.time <= "09:24",
+    );
+
+    if (minutes915To924.length === 0) return null;
+
+    // 9:15 AM only
+    const minute915 = minutes915To924.find((comp) => comp.time === "09:15");
+    const ceOIVol915 =
+      minute915?.ceData.volume && minute915.ceData.volume > 0
+        ? minute915.ceData.oi / minute915.ceData.volume
+        : 0;
+    const peOIVol915 =
+      minute915?.peData.volume && minute915.peData.volume > 0
+        ? minute915.peData.oi / minute915.peData.volume
+        : 0;
+    const leader915: "CE" | "PE" | null =
+      minute915 && ceOIVol915 !== peOIVol915
+        ? ceOIVol915 < peOIVol915
+          ? "CE"
+          : "PE"
+        : null;
+
+    // 9:15 AM - 9:24 AM average
+    let ceOIVolSum = 0,
+      peOIVolSum = 0,
+      validMinutes = 0;
+    const minuteSignals: Array<"CE" | "PE"> = [];
+
+    minutes915To924.forEach((comp) => {
+      const ceOIVol =
+        comp.ceData.volume > 0 ? comp.ceData.oi / comp.ceData.volume : 0;
+      const peOIVol =
+        comp.peData.volume > 0 ? comp.peData.oi / comp.peData.volume : 0;
+
+      if (ceOIVol > 0 || peOIVol > 0) {
+        ceOIVolSum += ceOIVol;
+        peOIVolSum += peOIVol;
+        validMinutes++;
+
+        if (ceOIVol !== peOIVol) {
+          minuteSignals.push(ceOIVol < peOIVol ? "CE" : "PE");
+        }
+      }
+    });
+
+    const ceAvgOIVol = validMinutes > 0 ? ceOIVolSum / validMinutes : 0;
+    const peAvgOIVol = validMinutes > 0 ? peOIVolSum / validMinutes : 0;
+    const windowLeader: "CE" | "PE" | null =
+      ceAvgOIVol !== peAvgOIVol
+        ? ceAvgOIVol < peAvgOIVol
+          ? "CE"
+          : "PE"
+        : null;
+
+    // Consistency - how many minutes the leader maintained lower OI/Vol
+    const consistency =
+      windowLeader && minuteSignals.length > 0
+        ? (minuteSignals.filter((s) => s === windowLeader).length /
+            minuteSignals.length) *
+          100
+        : 0;
+
+    return {
+      at915: {
+        leader: leader915,
+        ceOIVolRatio: ceOIVol915,
+        peOIVolRatio: peOIVol915,
+        leaderFileName:
+          leader915 === "CE"
+            ? currentAnalysis.ceFileName
+            : currentAnalysis.peFileName,
+        leaderStrike:
+          leader915 === "CE"
+            ? currentAnalysis.ceStrikePrice
+            : currentAnalysis.peStrikePrice,
+      },
+      window915To924: {
+        leader: windowLeader,
+        ceAvgOIVolRatio: ceAvgOIVol,
+        peAvgOIVolRatio: peAvgOIVol,
+        leaderFileName:
+          windowLeader === "CE"
+            ? currentAnalysis.ceFileName
+            : currentAnalysis.peFileName,
+        leaderStrike:
+          windowLeader === "CE"
+            ? currentAnalysis.ceStrikePrice
+            : currentAnalysis.peStrikePrice,
+        consistency,
+      },
+    };
+  }, [currentAnalysis]);
+
+  // 2. Price Move Analysis (9:21 - 9:24)
+  const priceMove915To924Data =
+    useMemo((): PriceMoveAnalysis921To924 | null => {
+      if (!currentAnalysis) return null;
+
+      const minutes915To924 = currentAnalysis.minuteComparisons.filter(
+        (comp) => comp.time >= "09:15" && comp.time <= "09:24",
+      );
+
+      if (minutes915To924.length === 0) return null;
+
+      const firstMinute = minutes915To924[0];
+      const lastMinute = minutes915To924[minutes915To924.length - 1];
+
+      const ceStartPrice = firstMinute.ceData.open;
+      const ceEndPrice = lastMinute.ceData.close;
+      const peStartPrice = firstMinute.peData.open;
+      const peEndPrice = lastMinute.peData.close;
+
+      const cePriceChange = ceEndPrice - ceStartPrice;
+      const pePriceChange = peEndPrice - peStartPrice;
+
+      const ceBullishMinutes = minutes915To924.filter(
+        (m) => m.ceData.candleType === "Bullish",
+      ).length;
+      const peBullishMinutes = minutes915To924.filter(
+        (m) => m.peData.candleType === "Bullish",
+      ).length;
+
+      let bullishSide: "CE" | "PE" | "Both" | "None" = "None";
+      if (cePriceChange > 0 && pePriceChange > 0) bullishSide = "Both";
+      else if (cePriceChange > 0 && pePriceChange <= 0) bullishSide = "CE";
+      else if (pePriceChange > 0 && cePriceChange <= 0) bullishSide = "PE";
+      else if (cePriceChange === 0 && pePriceChange === 0) bullishSide = "None";
+
+      return {
+        bullishSide,
+        cePriceChange,
+        pePriceChange,
+        ceStartPrice,
+        ceEndPrice,
+        peStartPrice,
+        peEndPrice,
+        ceBullishMinutes,
+        peBullishMinutes,
+      };
+    }, [currentAnalysis]);
+
   const formatCompactNumber = (num: number): string => {
     if (num >= 10000000) return (num / 10000000).toFixed(2) + "Cr";
     if (num >= 100000) return (num / 100000).toFixed(2) + "L";
@@ -3177,12 +3391,6 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                   icon: <Layers className="w-3.5 h-3.5" />,
                   activeCls: "bg-amber-500 text-white shadow-md",
                 },
-                // {
-                //   id: "thirtyPoint",
-                //   label: "30-Pt from 9:30",
-                //   icon: <Award className="w-3.5 h-3.5" />,
-                //   activeCls: "bg-violet-600 text-white shadow-md",
-                // },
               ] as const
             ).map((tab) => (
               <button
@@ -3208,6 +3416,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                   </span>
                 </h3>
               </div>
+              {/* First 12 Mins Analysis Card */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* Volume */}
                 <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
@@ -3367,8 +3576,232 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                   </div>
                 </div>
               </div>
-              {/* 30-Point Card */}
 
+              {/* Advance Analysis Card */}
+              <div className="mt-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap className="size-4 text-amber-300" />
+                  <h3 className="font-bold text-gray-800 text-sm">
+                    Advanced Analysis
+                    <span className="text-gray-400 font-normal ml-2">
+                      (9:15 AM - 9:24 AM)
+                    </span>
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* ================= OI/Volume Leader 9:15 ================= */}
+                  {oiVolumeLeaderData && (
+                    <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
+                      <div className="flex items-center gap-2 mb-3 text-xs text-gray-500 font-semibold uppercase tracking-wider">
+                        <Gauge className="w-3.5 h-3.5" />
+                        OI/Volume (9:15)
+                      </div>
+
+                      {[
+                        {
+                          label: "CE",
+                          val: oiVolumeLeaderData.at915.ceOIVolRatio,
+                          total:
+                            oiVolumeLeaderData.at915.ceOIVolRatio +
+                            oiVolumeLeaderData.at915.peOIVolRatio,
+                          cls: "bg-indigo-500",
+                        },
+                        {
+                          label: "PE",
+                          val: oiVolumeLeaderData.at915.peOIVolRatio,
+                          total:
+                            oiVolumeLeaderData.at915.ceOIVolRatio +
+                            oiVolumeLeaderData.at915.peOIVolRatio,
+                          cls: "bg-rose-500",
+                        },
+                      ].map((row) => (
+                        <div key={row.label} className="mb-2">
+                          <div className="flex justify-between text-xs mb-1">
+                            <span
+                              className={`font-bold ${
+                                row.label === "CE"
+                                  ? "text-indigo-600"
+                                  : "text-rose-600"
+                              }`}
+                            >
+                              {row.label}
+                            </span>
+                            <span className="font-mono">
+                              {row.val.toFixed(3)}
+                            </span>
+                          </div>
+
+                          <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full ${row.cls} rounded-full`}
+                              style={{
+                                width: `${(row.val / row.total) * 100}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+
+                      <div className="mt-2 pt-2 border-t border-gray-200 text-xs">
+                        Leader:{" "}
+                        <span
+                          className={`font-bold ${
+                            oiVolumeLeaderData.at915.leader === "CE"
+                              ? "text-indigo-600"
+                              : "text-rose-600"
+                          }`}
+                        >
+                          {oiVolumeLeaderData.at915.leader}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ================= OI/Volume 9:15-9:24 ================= */}
+                  {oiVolumeLeaderData && (
+                    <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
+                      <div className="flex items-center gap-2 mb-3 text-xs text-gray-500 font-semibold uppercase tracking-wider">
+                        <Gauge className="w-3.5 h-3.5" />
+                        OI/Volume (9:15-9:24)
+                      </div>
+
+                      {[
+                        {
+                          label: "CE",
+                          val: oiVolumeLeaderData.window915To924
+                            .ceAvgOIVolRatio,
+                          total:
+                            oiVolumeLeaderData.window915To924.ceAvgOIVolRatio +
+                            oiVolumeLeaderData.window915To924.peAvgOIVolRatio,
+                          cls: "bg-indigo-500",
+                        },
+                        {
+                          label: "PE",
+                          val: oiVolumeLeaderData.window915To924
+                            .peAvgOIVolRatio,
+                          total:
+                            oiVolumeLeaderData.window915To924.ceAvgOIVolRatio +
+                            oiVolumeLeaderData.window915To924.peAvgOIVolRatio,
+                          cls: "bg-rose-500",
+                        },
+                      ].map((row) => (
+                        <div key={row.label} className="mb-2">
+                          <div className="flex justify-between text-xs mb-1">
+                            <span
+                              className={`font-bold ${
+                                row.label === "CE"
+                                  ? "text-indigo-600"
+                                  : "text-rose-600"
+                              }`}
+                            >
+                              {row.label}
+                            </span>
+                            <span className="font-mono">
+                              {row.val.toFixed(3)}
+                            </span>
+                          </div>
+
+                          <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full ${row.cls} rounded-full`}
+                              style={{
+                                width: `${(row.val / row.total) * 100}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+
+                      <div className="mt-2 pt-2 border-t border-gray-200 text-xs">
+                        Leader:{" "}
+                        <span
+                          className={`font-bold ${
+                            oiVolumeLeaderData.window915To924.leader === "CE"
+                              ? "text-indigo-600"
+                              : "text-rose-600"
+                          }`}
+                        >
+                          {oiVolumeLeaderData.window915To924.leader}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ================= Price Move ================= */}
+                  {priceMove915To924Data && (
+                    <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
+                      <div className="flex items-center gap-2 mb-3 text-xs text-gray-500 font-semibold uppercase tracking-wider">
+                        <MoveUpRight className="w-3.5 h-3.5" />
+                        Price Move (9:15-9:24)
+                      </div>
+
+                      {[
+                        {
+                          label: "CE",
+                          from: priceMove915To924Data.ceStartPrice,
+                          to: priceMove915To924Data.ceEndPrice,
+                          change: priceMove915To924Data.cePriceChange,
+                        },
+                        {
+                          label: "PE",
+                          from: priceMove915To924Data.peStartPrice,
+                          to: priceMove915To924Data.peEndPrice,
+                          change: priceMove915To924Data.pePriceChange,
+                        },
+                      ].map((row) => (
+                        <div key={row.label} className="mb-3">
+                          <div className="flex justify-between text-xs mb-0.5">
+                            <span
+                              className={`font-bold ${
+                                row.label === "CE"
+                                  ? "text-indigo-600"
+                                  : "text-rose-600"
+                              }`}
+                            >
+                              {row.label}
+                            </span>
+
+                            <span
+                              className={`font-mono font-bold ${
+                                row.change >= 0
+                                  ? "text-emerald-600"
+                                  : "text-rose-600"
+                              }`}
+                            >
+                              {row.change >= 0 ? "+" : ""}
+                              {row.change.toFixed(2)} Rs
+                            </span>
+                          </div>
+
+                          {/* OPEN → CLOSE */}
+                          <div className="text-[10px] text-gray-400 font-mono">
+                            {row.from.toFixed(1)} → {row.to.toFixed(1)}
+                          </div>
+                        </div>
+                      ))}
+
+                      <div className="mt-2 pt-2 border-t border-gray-200 text-xs">
+                        Bullish Side:{" "}
+                        <span
+                          className={`font-bold ${
+                            priceMove915To924Data.bullishSide === "CE"
+                              ? "text-indigo-600"
+                              : "text-rose-600"
+                          }`}
+                        >
+                          {priceMove915To924Data.bullishSide}
+                          {/* {priceMove915To924Data.bullishSide === "CE"
+                            ? currentAnalysis.ceFileName?.split("_")?.[1]
+                            : currentAnalysis.peFileName?.split("_")?.[1]} */}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 30-Point Card */}
               <div className="bg-white rounded-2xl shadow-md p-4 mb-4 border border-violet-100 mt-5">
                 <div className="flex items-center gap-2 mb-4">
                   <Target className="w-4 h-4 text-violet-500" />
