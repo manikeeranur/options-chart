@@ -3522,7 +3522,7 @@ const MinuteAnalysisAllInOne: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                {/* Price */}
+                {/* Price Leader*/}
                 <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
                   <div className="flex items-center gap-2 mb-3 text-xs text-gray-500 font-semibold uppercase tracking-wider">
                     <TrendingUp className="w-3.5 h-3.5" />
