@@ -104,8 +104,8 @@ interface Stats {
 // ==================== CONSTANTS ====================
 const IST_OFFSET_SECONDS = 5.5 * 60 * 60;
 const LOT_SIZE = 65; // 1 lot = 65 quantity
-const TARGET_POINTS = 30; // UPDATED: 30 points target
-const SL_POINTS = 30; // UPDATED: 30 points stop loss
+const TARGET_POINTS = 60; // UPDATED: 30 points target
+const SL_POINTS = 15; // UPDATED: 30 points stop loss
 
 const parseDateString = (dateStr: string): number => {
   try {
@@ -389,8 +389,8 @@ const runBatchAnalysis = (allFiles: ParsedFile[]): AnalysisResult[] => {
         : Math.round(((obsMinutes.length - ceLower) / obsMinutes.length) * 100);
 
     // ===== ENTRY AT 9:30 =====
-    const entry930CE = ceMap["09:30"] || ceMap["09:29"] || ceMap["09:28"];
-    const entry930PE = peMap["09:30"] || peMap["09:29"] || peMap["09:28"];
+    const entry930CE = ceMap["09:26"] || ceMap["09:29"] || ceMap["09:28"];
+    const entry930PE = peMap["09:26"] || peMap["09:29"] || peMap["09:28"];
     if (!entry930CE || !entry930PE) continue;
 
     const entryPriceCE = entry930CE.open;
@@ -421,7 +421,7 @@ const runBatchAnalysis = (allFiles: ParsedFile[]): AnalysisResult[] => {
     // ===== CHECK HITS FROM 9:30 TO 10:15 =====
     const execTimes = Object.keys({ ...ceMap, ...peMap })
       .sort()
-      .filter((t) => t >= "09:30" && t <= "10:15");
+      .filter((t) => t >= "09:26" && t <= "13:15");
 
     let leaderHit: "TARGET" | "SL" | null = null;
     let leaderHitTime: string | null = null;
@@ -500,7 +500,7 @@ const runBatchAnalysis = (allFiles: ParsedFile[]): AnalysisResult[] => {
       avgPEOIVol: avgPEOIVol.toFixed(3),
       oiVolConsistency,
 
-      entryTime: formatTimeStrToAmPm("09:30"),
+      entryTime: formatTimeStrToAmPm("09:26"),
       entryPrice: entryPrice.toFixed(2),
       entryStrike,
       entryFile,
@@ -639,7 +639,7 @@ const exportToExcel = (results: AnalysisResult[]): void => {
             ).toFixed(1) + "%"
           : "0%",
     },
-    { Metric: "Risk:Reward Ratio", Value: "1:1" },
+    { Metric: "Risk:Reward Ratio", Value: "1:4" },
   ];
 
   const ws2 = XLSX.utils.json_to_sheet(summaryRows);
@@ -824,11 +824,11 @@ export default function PriceLeaderDashboard() {
           </div>
           <div>
             <h1 className="font-bold text-gray-900 text-sm">
-              Price Leader Analysis (Target: 30 pts | SL: 30 pts | 1:1
+              Price Leader Analysis (Target: 60 pts | SL: 15 pts | 1:4
               Risk/Reward)
             </h1>
             <p className="text-xs text-gray-400">
-              1 Lot = 65 Quantity | P&L: +₹1,950 on Target / -₹1,950 on SL
+              1 Lot = 65 Quantity | P&L: +₹3,900 on Target / -₹975 on SL
             </p>
           </div>
         </div>
@@ -903,14 +903,14 @@ export default function PriceLeaderDashboard() {
                 <p className="text-sm text-gray-400 mb-3">or click to browse</p>
                 <p className="text-xs text-indigo-500 bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-2 inline-block">
                   Target: 30 pts (₹1,950) | SL: 30 pts (-₹1,950) | 1 Lot = 65
-                  Qty | 1:1 Risk/Reward
+                  Qty | 1:4 Risk/Reward
                 </p>
               </>
             )}
           </div>
           <div className="mt-6 max-w-xl w-full bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs font-semibold text-gray-600 mb-2">
-              How it works (1:1 Risk/Reward Strategy):
+              How it works (1:4 Risk/Reward Strategy):
             </p>
             <ul className="space-y-1 text-xs text-gray-500">
               <li>
@@ -924,11 +924,11 @@ export default function PriceLeaderDashboard() {
                 ✅ <strong>Target</strong>: +30 points (₹1,950 per lot)
               </li>
               <li>
-                ✅ <strong>SL</strong>: -30 points (-₹1,950 per lot) - 1:1
+                ✅ <strong>SL</strong>: -30 points (-₹1,950 per lot) - 1:4
                 risk/reward
               </li>
               <li>
-                ✅ <strong>Monitor</strong>: 9:30-10:15 AM for hit/miss
+                ✅ <strong>Monitor</strong>: 9:26-10:15 AM for hit/miss
               </li>
               <li>
                 ✅ <strong>P&L</strong>: Calculated for 1 lot (65 quantity) -
@@ -1056,9 +1056,9 @@ export default function PriceLeaderDashboard() {
                       <Th field="priceLeaderSide" label="Leader" />
                       <Th field="priceLeaderStrength" label="Strength" />
                       <Th field="priceLeaderConsistency" label="Consistency" />
-                      <Th field="entryPrice" label="Entry(9:30)" />
-                      <Th field="target" label="Target(30)" />
-                      <Th field="sl" label="SL(30)" />
+                      <Th field="entryPrice" label="Entry(9:26)" />
+                      <Th field="target" label="Target(60)" />
+                      <Th field="sl" label="SL(15)" />
                       <Th field="leaderHit" label="Hit" />
                       <Th field="leaderHitTime" label="Hit Time" />
                       <Th field="leaderMaxPts" label="Max Pts" />
@@ -1192,10 +1192,10 @@ export default function PriceLeaderDashboard() {
           <div className="mt-3 text-[10px] text-gray-400 flex flex-wrap gap-4">
             <span>Leader: Strongest price mover 9:15–9:27 AM</span>
             <span>
-              Entry: 9:30 AM | Target: +30 pts (₹1,950) | SL: -30 pts (-₹1,950)
+              Entry: 9:26 AM | Target: +60 pts (₹3,900) | SL: -15 pts (-₹975)
             </span>
             <span>
-              1 Lot = 65 Quantity | P&L: ₹65 per point | 1:1 Risk/Reward
+              1 Lot = 65 Quantity | P&L: ₹65 per point | 1:4 Risk/Reward
             </span>
             <span>Click headers to sort</span>
           </div>
